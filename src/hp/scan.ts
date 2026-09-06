@@ -115,11 +115,20 @@ function rowRun(data: Pixels, width: number, y: number) {
   return { ...best, fills }
 }
 
+export interface Band {
+  x0: number
+  y0: number
+  y1: number
+  /** 有血色最多的那一列；全空的血條退回幾何中線 */
+  bestY: number
+}
+
 /**
- * 第一步：找出血條的左端與上下界。
+ * 第一步：找出候選的橫帶——血條的左端與上下界。
  * 分組只看左端——左端是血條的固定邊，右端會隨血量與 UI 遮擋一直變。
+ * 回傳的是「先試誰」的順序，不是「是誰」：哪一條真的是血條要靠後面幾關判斷。
  */
-export function detectBand(data: Pixels, width: number, height: number, opts: ScanOptions = {}) {
+export function detectBands(data: Pixels, width: number, height: number, opts: ScanOptions = {}): Band[] {
   const rows = Math.max(1, Math.round(height * (opts.topFrac ?? 1)))
   const minWidth = (opts.minWidthFrac ?? 0.2) * width
   const minRows = opts.minRows ?? 5
@@ -152,21 +161,24 @@ export function detectBand(data: Pixels, width: number, height: number, opts: Sc
     }
   }
   const valid = bands.filter((b) => b.ys.length >= minRows)
-  if (!valid.length) return null
-  // 血色多的優先——血條下方的 UI 深色橫帶可能比血條還長，光比寬度會挑錯；
+  // 血色多的先試——血條下方的 UI 深色橫帶可能比血條還長，光比寬度會挑錯；
   // 而那條帶子常跟血條最後一列黏在一起，所以「有沒有血色」也不夠，要比總量。
   // 血量歸零的血條沒有血色，那時就純比寬度。
+  // 但這只能決定順序，不能決定答案：血量一低，血條的血色總量會輸給彩度高的
+  // 遊戲背景（粉紫色的天空整條都算「有血」），真正的血條得等假的被後面幾關
+  // 擋掉之後才輪得到。
   valid.sort((a, b) => b.fillSum - a.fillSum || b.x1 - b.x0 - (a.x1 - a.x0))
-  const band = valid[0]
-  // 這一帶可能連同血條下方的深色 UI 橫帶一起框進來，中線取「有血色最多的那一列」，
-  // 才不會整條判讀跑到那條帶子上；全空的血條就退回幾何中線
-  const middle = Math.floor((band.ys[0] + band.ys[band.ys.length - 1]) / 2)
-  return {
-    x0: band.x0,
-    y0: band.ys[0],
-    y1: band.ys[band.ys.length - 1],
-    bestY: band.bestFills > 0 ? band.bestY : middle,
-  }
+  return valid.map((band) => {
+    // 這一帶可能連同血條下方的深色 UI 橫帶一起框進來，中線取「有血色最多的那一列」，
+    // 才不會整條判讀跑到那條帶子上；全空的血條就退回幾何中線
+    const middle = Math.floor((band.ys[0] + band.ys[band.ys.length - 1]) / 2)
+    return {
+      x0: band.x0,
+      y0: band.ys[0],
+      y1: band.ys[band.ys.length - 1],
+      bestY: band.bestFills > 0 ? band.bestY : middle,
+    }
+  })
 }
 
 /**
@@ -397,15 +409,8 @@ export function hasBorder(
   return Math.max(top, bottom) / samples >= minRatio
 }
 
-/** 自動判讀一整張畫面；找不到血條回 null */
-export function scanHpBar(
-  data: Pixels,
-  width: number,
-  height: number,
-  opts: ScanOptions = {},
-): HpReading | null {
-  const band = detectBand(data, width, height, { topFrac: 0.2, ...opts })
-  if (!band) return null
+/** 從一條候選帶往下走完剩下三關；哪一關擋下就回 null */
+function readBand(data: Pixels, width: number, height: number, band: Band): HpReading | null {
   const guess = band.bestY
   const x0 = contentStart(data, width, guess, band.x0)
   // 量上下界要挑「有血色」的那一欄：血量很低時 x0 附近就只剩幾格血，
@@ -419,8 +424,11 @@ export function scanHpBar(
   }
   const bounds = verticalBounds(data, width, height, probeX, guess, Math.max(6, height * 0.08))
   const mid = Math.floor((bounds.y0 + bounds.y1) / 2)
-  // 整欄檢查只看中間那幾列：上下緣有漸層與抗鋸齒，算進去只會添亂
-  const inset = Math.floor((bounds.y1 - bounds.y0) * 0.2)
+  // 整欄檢查只看中間那幾列。上下界是從血色區量的，紅色漸層填滿整個高度，
+  // 但空槽的有效灰只有中間那一截（上下各約三成是過亮或過暗的過渡帶）——
+  // 削得不夠，整欄檢查一走進空槽區就在上下緣撞到非血條像素而失敗，
+  // 右端停在血色結束的地方，血量被算成滿的
+  const inset = Math.floor((bounds.y1 - bounds.y0) * 0.3)
   const columnYs: number[] = []
   for (let y = bounds.y0 + inset; y <= bounds.y1 - inset; y++) columnYs.push(y)
   const x1 = extendRight(data, width, mid, x0, { columnYs: columnYs.length ? columnYs : [mid] })
@@ -430,4 +438,20 @@ export function scanHpBar(
   if (rect.y1 - rect.y0 > height * 0.5) return null
   if (!hasBorder(data, width, height, rect)) return null
   return { rect, ...readRatioIn(data, width, rect) }
+}
+
+/** 自動判讀一整張畫面；找不到血條回 null */
+export function scanHpBar(
+  data: Pixels,
+  width: number,
+  height: number,
+  opts: ScanOptions = {},
+): HpReading | null {
+  // 候選帶依「像血條的程度」排好了，但排第一的不一定是——彩度高的背景會贏過
+  // 血量低的血條。逐一走完後面三關，第一個全部過關的才是。
+  for (const band of detectBands(data, width, height, { topFrac: 0.2, ...opts })) {
+    const reading = readBand(data, width, height, band)
+    if (reading) return reading
+  }
+  return null
 }
