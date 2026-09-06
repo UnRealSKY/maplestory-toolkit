@@ -359,15 +359,22 @@ button { font-family: inherit; }
   display: flex; flex-wrap: wrap; align-content: flex-start;
 }
 .pip-body > * { flex: 0 0 100%; }
-/* ——除了這一對：時鐘只佔它需要的寬，血量吃掉同一列剩下的。上面那條 100% 會
-   讓它們各佔一列，時鐘那 43px 白白吃掉高度，等比縮放就得多縮兩成，字反而變小 */
-.pip-body > .pip-clock { flex: 0 0 auto; }
-.pip-body > .hp-card { flex: 1 1 0; min-width: 0; margin-left: 6px; }
 /* 只有輸入框留著可以選、可以編輯 */
 .pip-body input { user-select: text; -webkit-user-select: text; }
 .pip-body.app { max-width: none; padding: 5px; }
 .pip-body .card { margin-bottom: 4px; padding: 5px 7px; }
+/* HpCapture 自己 scoped 了 margin-bottom: 12px，跟上一條同特異性、它後載入所以贏；
+   多寫一個 class 壓回來，不然血量那列平白多吃 8px */
+.pip-body .card.hp-card { margin-bottom: 4px; }
 .pip-body .phase-panel { padding: 6px 8px; }
+/* 面板高度釘在該王「最高的那個狀態」。子母畫面是依內容高度等比縮放的，
+   面板一從待機進入計時中（反盾）、或血量從等待變成有數字再進 70 秒循環（阿卡），
+   內容一變高縮放就跟著跳，整個視窗的字忽大忽小——而且正好發生在開打那一刻。
+   待機時先把空間留著，那塊本來就是等下要用的。數字是 480x144 視窗、width 100%
+   時量的 CSS px：反盾計時中 75、阿卡過 20% 進循環 169。循環面板每個 item 都帶
+   phase-panel，但它觸發前後等高，不需要、也不能被這條撐開 */
+.pip-body .phase-panel:not(.cycle-item):not(.hp-threshold) { min-height: 75px; }
+.pip-body .hp-threshold { min-height: 169px; }
 .pip-body .phase-title { font-size: 15px; }
 .pip-body .phase-remaining { font-size: 26px; }
 .pip-body .phase-bar { height: 4px; margin-top: 4px; }
@@ -401,7 +408,9 @@ button { font-family: inherit; }
   background: none; border: none; box-shadow: none;
 }
 .pip-body .anchor-row { justify-content: flex-start; gap: 4px; flex-wrap: nowrap; }
-.pip-body .anchor-input { flex: 0 0 74px; font-size: 11.5px; padding: 3px 6px; text-align: center; }
+/* 上面 .app input:not(…):not(…) 是 (0,3,1)，.pip-body .anchor-input 只有 (0,2,0) 會輸給它——
+   這條之前從來沒生效過，時間那列因此高了 7px。疊到 (0,4,1) 才壓得過 */
+.pip-body.app input.anchor-input { flex: 0 0 74px; font-size: 11.5px; padding: 3px 6px; text-align: center; }
 .pip-body .hp-threshold .marks { margin-top: 5px; gap: 4px; }
 .pip-body .hp-threshold .mark { padding: 2px 8px; font-size: 11.5px; }
 .pip-body .hp-threshold .sub-row { margin-top: 4px; gap: 5px; }
