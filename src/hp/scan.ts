@@ -388,7 +388,10 @@ export function hasBorder(
   minRatio = 0.5,
 ): boolean {
   const samples = 20
-  const reach = 4 // 內部與外框之間還隔著漸層與抗鋸齒，往外找幾格
+  // 內部與外框之間隔著漸層與抗鋸齒，往外找幾格。血條越粗這段越寬：2560x1440 下
+  // 血條高 30px、外框落在第 4~5 格，串流一壓縮 verticalBounds 偏 1px 就出界找不到。
+  // 依高度取兩成，1280x720（高 15）維持 4 格，不動既有的判讀
+  const reach = Math.max(4, Math.round((rect.y1 - rect.y0) * 0.2))
   const span = rect.x1 - rect.x0
   if (span <= 0) return false
   const borderAt = (x: number, from: number, step: number) => {
