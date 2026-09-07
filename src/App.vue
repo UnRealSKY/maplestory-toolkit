@@ -379,7 +379,11 @@ button { font-family: inherit; }
 .pip-body .phase-remaining { font-size: 26px; }
 .pip-body .phase-bar { height: 4px; margin-top: 4px; }
 .pip-body .remaining-row, .pip-body .seg-row { margin-top: 2px; gap: 5px; }
-.pip-body .ctrl { min-width: 0; padding: 5px 4px; font-size: 12px; }
+/* DamageReflectPanel scoped 的 .ctrl[data-v] { min-width: 120px } 跟 .pip-body .ctrl 同特異性、
+   它後載入所以贏——min-width: 0 從來沒生效過。後果不只是視窗拉窄會被切：五顆按鈕最少
+   600px，在 480 寬的子母畫面裡 width 100% 時被迫換成兩行、fitToWindow 撐開 width 後又縮回
+   一行，高度來回跳讓縮放算不收斂，只好取矮的那個，底下空掉三成。多寫一層 .controls 壓過去 */
+.pip-body .controls .ctrl { min-width: 0; padding: 5px 4px; font-size: 12px; }
 .pip-body .controls { gap: 4px; }
 /* 小視窗放不下也不需要的：操作說明、事件表、待機時的提示 */
 .pip-body .ctrl-hint, .pip-body .phase-note, .pip-body .events-card { display: none; }
