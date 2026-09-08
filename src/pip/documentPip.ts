@@ -42,53 +42,56 @@ export function copyStyles(from: Document, to: Document): void {
   }
 }
 
+export interface PipSize {
+  width: number
+  height: number
+}
+
 /**
- * 把內容縮到剛好塞滿視窗——小視窗裡出現捲軸就等於看不到下面那半。
- * zoom 縮小後 viewport 的 CSS 寬度會等比變大，body 維持 100% 就會自己填滿，
- * 不需要（也不能）再去撐寬度，撐了反而右邊溢出被切掉。
- * 縮放會改變換行進而改變高度，所以跑幾輪讓它收斂。
+ * 先在視窗寬下排版、量內容自然高，倍率＝視窗高÷內容高（最多 1）；再把 width 用
+ * 視窗寬÷倍率撐開，內容 reflow 填滿——視窗一寬按鈕變一行、內容自己變矮、就不必縮；
+ * 拉高不放大，多出來的高度留在底下，各區塊維持原尺寸。
+ * 「內容高」不會跟倍率互相追：面板高度用 min-height 釘在該王最高的狀態、血條區
+ * 固定高、按鈕換行只看 PiP 視窗寬（media query）不看撐開後的 body 寬——量到的高
+ * 在同一個視窗尺寸下永遠一樣，狀態切換、換王都不會讓字忽大忽小。
+ * 用 transform 而不是 zoom：zoom 會改變佈局寬度，內容跟著重新換行。
  */
 export function fitToWindow(win: Window): void {
   const b = win.document.body
-  const have = win.innerHeight
-  if (!have) return
-  // 用 transform 而不是 zoom：zoom 會改變佈局寬度，內容跟著重新換行、
-  // 高度反覆變動，比例算不收斂。transform 只影響外觀，排版完全不動。
-  b.style.transformOrigin = 'top left'
+  if (!win.innerWidth || !win.innerHeight) return
   b.style.transform = 'none'
-  b.style.width = '100%'
+  b.style.width = `${win.innerWidth}px`
+  b.style.height = 'auto'
   const natural = b.scrollHeight
-  if (natural <= have) return // 本來就塞得下，不用縮
-  // 先算出要縮多少，再把佈局寬度按同一比例撐開，縮回來才會剛好填滿視窗寬。
-  const z0 = have / natural
-  b.style.width = `${100 / z0}%`
-  // 撐寬之後換行變少、高度通常會降；但萬一反而更高就得縮更多，取保守的那個
-  const widened = b.scrollHeight
-  const z = Math.max(0.3, Math.min(z0, have / Math.max(1, widened)))
+  const z = Math.max(0.3, Math.min(1, win.innerHeight / natural))
+  b.style.width = `${win.innerWidth / z}px`
+  b.style.height = `${win.innerHeight / z}px`
+  b.style.transformOrigin = 'top left'
   b.style.transform = `scale(${z})`
 }
 
-/** 內容一變（換王、開始擷取、字型載入）或視窗被拉大縮小時重新縮放 */
+/**
+ * 把視窗調成「內容不用縮放剛好塞滿」的大小。resizeTo 給的是外框，標題列的高度
+ * 每台機器不一樣（系統縮放、主題），拿 outer - inner 當場算才準。
+ * 需要 user activation——換王是使用者點的，那個手勢還在有效期內；從網址進來
+ * 或按上一頁沒有手勢，呼叫會被瀏覽器擋掉，所以要吞掉例外讓它安靜地不做事。
+ */
+export function resizePip(win: Window, size: PipSize): boolean {
+  const chromeW = win.outerWidth - win.innerWidth
+  const chromeH = win.outerHeight - win.innerHeight
+  try {
+    win.resizeTo(size.width + chromeW, size.height + chromeH)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 視窗被拉大縮小時重新縮放；內容變化不會改倍率，不必盯著它 */
 export function keepFitted(win: Window): void {
   const fit = () => fitToWindow(win)
-  // 視窗剛開時版面還沒穩定，量到的高度會偏小，隔幾拍再各量一次
-  const settle = () => {
-    fit()
-    win.requestAnimationFrame(fit)
-    win.setTimeout(fit, 300)
-    win.setTimeout(fit, 1000)
-  }
-  settle()
+  fit()
   win.addEventListener('resize', fit)
-  const RO = (win as unknown as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver
-  if (RO) {
-    const ro = new RO(() => fit())
-    ro.observe(win.document.body) // 總高度變了就重算，這是主要的觸發來源
-    for (const el of Array.from(win.document.body.children)) ro.observe(el)
-  }
-  const MO = (win as unknown as { MutationObserver?: typeof MutationObserver }).MutationObserver
-  // 只看直接子元素的增減（換王會整塊換掉）；倒數每幀都在改文字，不能跟著跑
-  if (MO) new MO(settle).observe(win.document.body, { childList: true })
 }
 
 /** 開一個子母畫面視窗；不支援或使用者拒絕時回 null */

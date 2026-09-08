@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BOSSES, bossById, reflectBossById, setOverride, type BossOverride, type CycleBoss } from '../boss/bosses'
 import { DEFAULT_DISPEL_DURATION } from '../boss/bosses'
+import { mechanicById } from '../boss/mechanics'
 import {
   bossId,
   overrides,
@@ -17,7 +18,7 @@ import {
 } from '../boss/session'
 import { upcomingEvents } from '../boss/damageReflect'
 import { fmtTime } from '../boss/anchor'
-import { openPipWindow, pipSupported, keepFitted } from '../pip/documentPip'
+import { openPipWindow, pipSupported, keepFitted, resizePip } from '../pip/documentPip'
 import MechanicPanels from './MechanicPanels.vue'
 import CycleEvents from './CycleEvents.vue'
 import AnchorRow from './AnchorRow.vue'
@@ -39,21 +40,48 @@ const params = computed(() => reflectParams())
 // 主視窗那份照樣留著——狀態全在模組層，兩份看的是同一份資料。
 const pipBody = ref<HTMLElement | null>(null)
 const canPip = pipSupported()
+// 每個機制模板的面板大小差很多（反盾 463x384、效率推估 335x132），開起來與換王時
+// 都調成當下這隻王剛好塞滿的尺寸，字級才會是設計的大小。
+const pipSize = computed(() => mechanicById(current.value.mechanic).pip)
+// 使用者自己拉過視窗之後就不再自動調——他調的尺寸比我們的預設更清楚他要什麼。
+// 判斷方式是時間窗而不是比對尺寸：resizeTo 一次會連續發好幾個 resize 事件，
+// 中間那些量到的是過渡尺寸，跟目標值對不上，比對法會把自己的調整誤判成手動
+let pipIgnoreResizeUntil = 0
+const pipResizedByUser = ref(false)
+
+function applyPipSize(win: Window) {
+  if (pipResizedByUser.value) return
+  pipIgnoreResizeUntil = Date.now() + 600
+  resizePip(win, pipSize.value)
+}
+
 async function togglePip() {
   if (pipBody.value) {
     ;(pipBody.value.ownerDocument.defaultView as Window | null)?.close()
     pipBody.value = null
     return
   }
-  // 高度要塞得下最高的王（阿卡進 70 秒循環時內容 250px）加標題列。塞得下
-  // fitToWindow 就不會縮，字級固定、換王也不會整個視窗忽大忽小
-  const win = await openPipWindow({ width: 480, height: 310 })
+  pipResizedByUser.value = false
+  pipIgnoreResizeUntil = Date.now() + 600 // 開窗本身也會發 resize
+  const win = await openPipWindow(pipSize.value)
   if (!win) return
   win.addEventListener('pagehide', () => (pipBody.value = null))
+  win.addEventListener('resize', () => {
+    if (Date.now() < pipIgnoreResizeUntil) return
+    pipResizedByUser.value = true
+  })
   pipBody.value = win.document.body
   await nextTick()
   keepFitted(win)
 }
+
+// 換王就換尺寸。要等 DOM 換完再調，不然量到的還是上一隻王的版面
+watch(pipSize, async () => {
+  const win = pipBody.value?.ownerDocument.defaultView
+  if (!win) return
+  await nextTick()
+  applyPipSize(win)
+})
 
 // ---- 選王與參數 ----
 // 計時中換王會拿到錯的倒數，鎖住；要換先按「重置」

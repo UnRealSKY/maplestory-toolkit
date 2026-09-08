@@ -318,10 +318,15 @@ button { font-family: inherit; }
 
 /* 引信：SVG 不設 viewBox，rect 用 100% 貼齊容器，所以圓角與線寬都不會被拉伸。
    pathLength=100 把周長正規化成 100，dasharray 直接吃百分比。 */
-.fuse { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* 引信要跟邊框疊在同一條線上——看起來是那一段框變粗了，不是框內另外畫一圈。
+   overflow 要放行：stroke 有一半落在 padding box 外（邊框本身的位置），
+   SVG 預設會把它切掉 */
+.fuse { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .fuse rect {
-  x: 1.5px; y: 1.5px; width: calc(100% - 3px); height: calc(100% - 3px);
-  rx: 11px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round;
+  /* 對齊邊框的中心線：邊框 1px，中心線在 padding box 外 0.5px，圓角也跟著
+     從卡片的 12 減半個邊框 = 11.5 */
+  x: -0.5px; y: -0.5px; width: calc(100% + 1px); height: calc(100% + 1px);
+  rx: 11.5px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round;
 }
 .phase-reflect .fuse rect { stroke: var(--danger); }
 .phase-attack .fuse rect { stroke: var(--success); }
@@ -349,90 +354,114 @@ button { font-family: inherit; }
 }
 
 /* ---- 子母畫面：整組面板搬到一個很小的置頂視窗 ----
+   每一條都寫 .pip-body.app 而不是 .pip-body：元件自己的 scoped 樣式（.cycle-item[data-v]、
+   .ctrl[data-v]、.hp-card[data-v]…）跟 .pip-body .X 是同一個特異性，後載入的贏，這裡
+   的規則會整批默默失效——padding、字級、min-width 都撞過。多一個 class 一律壓過去。
    這裡的每一條都在擠高度：視窗只有 200px，內容越矮、等比縮放的倍率就越大，
    字反而看得更清楚。 */
-.pip-body {
+.pip-body.app {
   margin: 0; padding: 5px; background: var(--bg); overflow: hidden;
   /* 小視窗上都是要連點的按鈕，手一滑就整片反白，看起來像壞掉 */
   user-select: none; -webkit-user-select: none;
   /* 縱向排：時間、血條、機制各佔自己的高度，反盾的操作區吃掉底下剩餘的空間——
      矮的王（反盾王 196 vs 阿卡 250）底下才不會空一截。視窗開得夠高（310）時
      fitToWindow 判定塞得下就不縮，縮放固定 1，字級固定、換王不會整個視窗忽大忽小 */
-  display: flex; flex-direction: column; align-items: stretch; min-height: 100vh; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: stretch; box-sizing: border-box;
 }
-.pip-body > * { flex: 0 0 auto; }
-.pip-body > :last-child { margin-bottom: 0; }
+.pip-body.app > * { flex: 0 0 auto; }
+.pip-body.app > :last-child { margin-bottom: 0; }
 /* 剩餘的高度給血條——打王時眼睛盯的是它；按鈕固定高，不跟著長 */
-.pip-body > .hp-card { flex: 1 0 auto; display: flex; flex-direction: column; }
+/* 血條區固定高、不伸不縮。內容最多的狀態（擷取中＋有血條＋手動範圍標籤＋四顆按鈕）
+   量到 88px，取 92 留一點餘裕——沒擷取時空著也是這個高度，數字出現不會把底下推走 */
+.pip-body.app > .hp-card { flex: 0 0 92px; }
 /* 只有輸入框留著可以選、可以編輯 */
-.pip-body input { user-select: text; -webkit-user-select: text; }
+.pip-body.app input { user-select: text; -webkit-user-select: text; }
 .pip-body.app { max-width: none; padding: 5px; }
-.pip-body .card { margin-bottom: 4px; padding: 5px 7px; }
+.pip-body.app .card { margin-bottom: 4px; padding: 5px 7px; }
 /* HpCapture 自己 scoped 了 margin-bottom: 12px，跟上一條同特異性、它後載入所以贏；
    多寫一個 class 壓回來，不然血量那列平白多吃 8px */
-.pip-body .card.hp-card { margin-bottom: 4px; }
-.pip-body .phase-panel { padding: 6px 8px; }
-/* 面板高度釘在該王「最高的那個狀態」。子母畫面是依內容高度等比縮放的，
-   面板一從待機進入計時中（反盾）、或血量從等待變成有數字再進 70 秒循環（阿卡），
-   內容一變高縮放就跟著跳，整個視窗的字忽大忽小——而且正好發生在開打那一刻。
-   待機時先把空間留著，那塊本來就是等下要用的。數字是 480x144 視窗、width 100%
-   時量的 CSS px：反盾計時中 75、阿卡過 20% 進循環 169。循環面板每個 item 都帶
-   phase-panel，但它觸發前後等高，不需要、也不能被這條撐開 */
-.pip-body .phase-panel:not(.cycle-item):not(.hp-threshold) { min-height: 75px; }
-.pip-body .hp-threshold { min-height: 169px; }
-.pip-body .phase-title { font-size: 15px; }
-.pip-body .phase-remaining { font-size: 26px; }
-.pip-body .phase-bar { height: 4px; margin-top: 4px; }
-.pip-body .remaining-row, .pip-body .seg-row { margin-top: 2px; gap: 5px; }
-/* DamageReflectPanel scoped 的 .ctrl[data-v] { min-width: 120px } 跟 .pip-body .ctrl 同特異性、
+.pip-body.app .card.hp-card { margin-bottom: 4px; }
+.pip-body.app .phase-panel { padding: 6px 8px; }
+/* 面板高度釘在該王「最高的那個狀態」，不隨狀態長高——高度一變，倍率跟著跳，
+   整個視窗的字忽大忽小，而且正好發生在開打那一刻。待機時先把空間留著，那塊
+   本來就是等下要用的。
+   數字是 480 寬（基準）下逐一切狀態量出來的 CSS px：
+   反盾王最高的是「間隔／阻止成功＋已魔消＋技能冷卻中＋已對齊遊戲計時」六行 172px
+   （待機只有 37，差 4 倍）；阿卡過 20% 進 70 秒循環 169。
+   第七行「魔消回饋」不算進來：它只閃 2 秒，為它常態多留 21px 不划算，改成浮在
+   面板底部（見下面的 .dispel-feedback），那 2 秒會蓋住技能冷卻那行——冷卻還有
+   60 秒可看，回饋過了就沒了，蓋它比讓所有人多看 21px 空白划算。
+   循環面板每個 item 也帶 phase-panel，但它觸發前後等高，不需要也不能被這條撐開 */
+.pip-body.app .phase-panel:not(.cycle-item):not(.hp-threshold) { min-height: 175px; }
+/* 只閃 2 秒的提示不佔版面高度：浮在面板底部，出現與消失都不會推動別的行 */
+.pip-body.app .dispel-feedback {
+  position: absolute; left: 8px; right: 8px; bottom: 6px; margin-top: 0;
+}
+.pip-body.app .hp-threshold { min-height: 169px; }
+.pip-body.app .phase-title { font-size: 15px; }
+.pip-body.app .phase-remaining { font-size: 26px; }
+.pip-body.app .phase-bar { height: 4px; margin-top: 4px; }
+.pip-body.app .remaining-row, .pip-body.app .seg-row { margin-top: 2px; gap: 5px; }
+/* DamageReflectPanel scoped 的 .ctrl[data-v] { min-width: 120px } 跟 .pip-body.app .ctrl 同特異性、
    它後載入所以贏——min-width: 0 從來沒生效過，五顆按鈕最少 600px 塞不進 480 寬。多寫一層
    .controls 壓過去 */
-.pip-body .controls .ctrl { min-width: 0; padding: 10px 4px; font-size: 14px; }
-.pip-body .controls { gap: 6px; }
-/* 折行只看視窗寬，不看 fitToWindow 撐開後的 body 寬——不然換行改高度、高度改縮放、
-   縮放又改換行，算不收斂。窄視窗 3+2 兩排 */
-@media (max-width: 420px) { .pip-body .controls .ctrl { flex-basis: 30%; } }
+/* 按文字長度分配寬度，不要等寬：五顆等寬時「反盾阻止成功」六個字剛好塞滿 85px，
+   左右一點餘裕都沒有，「重置」卻兩邊各空 28px。flex-basis auto 讓每顆按自己的
+   內容寬起跳，padding 才真的留得出來 */
+.pip-body.app .controls .ctrl { flex: 1 0 auto; min-width: 0; padding: 10px 12px; font-size: 14px; }
+.pip-body.app .controls { gap: 6px; flex-wrap: nowrap; }
+/* 折行只看 PiP 視窗寬，不看 fitToWindow 撐開後的 body 寬——不然換行改內容高、
+   內容高改倍率、倍率又改 body 寬，算不收斂。寬的視窗鎖一行；窄視窗 3+2 兩排 */
+@media (max-width: 460px) { .pip-body.app .controls { flex-wrap: wrap; } .pip-body.app .controls .ctrl { flex-basis: 30%; } }
 /* 小視窗放不下也不需要的：操作說明、事件表、待機時的提示 */
-.pip-body .ctrl-hint, .pip-body .phase-note, .pip-body .events-card { display: none; }
+.pip-body.app .ctrl-hint, .pip-body.app .phase-note, .pip-body.app .events-card { display: none; }
 /* 標題在小視窗裡是廢話，血條本身就說明一切；「下次」「60s」同理 */
-.pip-body .hp-card h3, .pip-body .until-label, .pip-body .cycle-interval { display: none; }
-.pip-body .hp-card .section-head { margin-bottom: 2px; }
-.pip-body .hp-card .btn { padding: 3px 8px; font-size: 12px; }
-.pip-body .hp-bar { height: 12px; }
-.pip-body .hp-row { margin-top: 2px; }
-.pip-body .hp-percent { font-size: 24px; min-width: 5ch; }
-.pip-body .hp-dps { font-size: 11px; }
+.pip-body.app .hp-card h3, .pip-body.app .until-label, .pip-body.app .cycle-interval { display: none; }
+.pip-body.app .hp-card .section-head { margin-bottom: 2px; }
+.pip-body.app .hp-card .btn { padding: 3px 8px; font-size: 12px; }
+.pip-body.app .hp-bar { height: 12px; }
+.pip-body.app .hp-row { margin-top: 2px; }
+.pip-body.app .hp-percent { font-size: 24px; min-width: 5ch; }
+.pip-body.app .hp-dps { font-size: 11px; }
 /* 小視窗裡排成一列：疊成多排會讓整體變高，等比縮下來字就小到看不清 */
-.pip-body .cycle-grid {
+.pip-body.app .cycle-grid {
   grid-template-columns: none !important;
   grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px;
   align-items: stretch;
 }
-.pip-body .cycle-item { padding: 4px 3px; gap: 2px; }
+.pip-body.app .cycle-item { padding: 4px 3px; gap: 2px; }
 /* 五格並排每格只有 86px，−1s／＋1s 兩顆塞不下會擠出格子邊界；PiP 裡只留符號。
-   CycleBoard scoped 的 .cycle-item .nudge[data-v] 跟 .pip-body .cycle-item .nudge 同特異性、
+   CycleBoard scoped 的 .cycle-item .nudge[data-v] 跟 .pip-body.app .cycle-item .nudge 同特異性、
    後載入的贏，所以多加 .btn 才壓得過（標題與倒數的縮字規則同樣輸給 scoped，但視窗現在
    夠高不縮放、你要的就是大字，那兩條直接拿掉讓元件原值生效） */
-.pip-body .cycle-item .btn.nudge { padding: 2px 6px; font-size: 13px; }
-.pip-body .cycle-item .nudge-unit { display: none; }
-.pip-body .cycle-item .seg-remaining { padding: 1px 4px; font-size: 11px; }
+.pip-body.app .cycle-item .btn.nudge { padding: 2px 3px; font-size: 13px; }
+.pip-body.app .cycle-item .nudge-unit { display: none; }
+/* 五格並排每格內容區 80px，倒數顯示 mm:ss 時 30px 的等寬字塞不下會被切尾巴 */
+.pip-body.app .cycle-item .phase-remaining { font-size: 22px; }
+/* [−][_s][＋] 三個要擠進格子的內容區。秒數是動態的（「9s」到「90s」寬度會變），
+   靠視窗寬度去餵它會讓最小寬跟著內容跳，所以這裡把三個都壓到最小、gap 收到 2px，
+   窄格子也放得下 */
+.pip-body.app .cycle-item .seg-remaining { padding: 0 1px; font-size: 10px; min-width: 22px; text-align: center; }
+.pip-body.app .cycle-item .remaining-row { gap: 2px; }
 /* 跟反盾的五顆 .ctrl 同一個尺寸——同樣是打王時要按的主按鈕，不該一邊 36px 一邊 22px */
-.pip-body .cycle-item .trigger { margin-top: 3px; padding: 10px 4px; font-size: 14px; }
-.pip-body .pip-clock {
+.pip-body.app .cycle-item .trigger { margin-top: 3px; padding: 10px 4px; font-size: 14px; }
+.pip-body.app .pip-clock {
   padding: 0 2px 3px; margin-bottom: 3px;
   background: none; border: none; box-shadow: none;
 }
-.pip-body .anchor-row { justify-content: flex-start; gap: 4px; flex-wrap: nowrap; }
-/* 上面 .app input:not(…):not(…) 是 (0,3,1)，.pip-body .anchor-input 只有 (0,2,0) 會輸給它——
+.pip-body.app .anchor-row { justify-content: flex-start; gap: 4px; flex-wrap: nowrap; }
+/* 上面 .app input:not(…):not(…) 是 (0,3,1)，.pip-body.app .anchor-input 只有 (0,2,0) 會輸給它——
    這條之前從來沒生效過，時間那列因此高了 7px。疊到 (0,4,1) 才壓得過 */
-.pip-body.app input.anchor-input { flex: 0 0 74px; font-size: 11.5px; padding: 3px 6px; text-align: center; }
-.pip-body .hp-threshold .marks { margin-top: 5px; gap: 4px; }
-.pip-body .hp-threshold .mark { padding: 2px 8px; font-size: 11.5px; }
-.pip-body .hp-threshold .sub-row { margin-top: 4px; gap: 5px; }
-.pip-body .hp-threshold .gap-value { font-size: 24px; }
-.pip-body .hp-threshold .need-capture { margin-top: 4px; }
-.pip-body .cycle-head { margin-bottom: 3px; }
-.pip-body .cycle-head .btn { padding: 2px 8px; font-size: 11.5px; }
-.pip-body .anchor-row .btn { padding: 3px 7px; font-size: 11.5px; }
-.pip-body .game-clock { font-size: 13px; padding: 1px 7px; }
+.pip-body.app input.anchor-input { flex: 0 0 74px; font-size: 11.5px; padding: 0 6px; height: 20px; line-height: 18px; text-align: center; }
+.pip-body.app .hp-threshold .marks { margin-top: 5px; gap: 4px; }
+.pip-body.app .hp-threshold .mark { padding: 2px 8px; font-size: 11.5px; }
+.pip-body.app .hp-threshold .sub-row { margin-top: 4px; gap: 5px; }
+.pip-body.app .hp-threshold .gap-value { font-size: 24px; }
+.pip-body.app .hp-threshold .need-capture { margin-top: 4px; }
+.pip-body.app .cycle-head { margin-bottom: 3px; }
+.pip-body.app .cycle-head .btn { padding: 2px 8px; font-size: 11.5px; }
+/* 輸入框（line-height normal）、按鈕（1）、遊戲時間（繼承 1.5）三個自然高各不相同，
+   mm:ss 那格比旁邊按鈕高出 3px。釘同一個高度 */
+.pip-body.app .anchor-row .btn { padding: 0 7px; font-size: 11.5px; height: 20px; }
+.pip-body.app .game-clock { font-size: 13px; padding: 0 7px; height: 20px; line-height: 20px; display: inline-block; }
 </style>
