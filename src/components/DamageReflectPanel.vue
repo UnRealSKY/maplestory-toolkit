@@ -113,7 +113,7 @@ const nextPhaseInfo = computed(() => {
       : s.phase === 'interval'
         ? s.dispelValid
           ? '反盾阻止成功（可輸出）'
-          : '反盾開始（禁止輸出）'
+          : '反盾期間（禁止輸出）'
         : '間隔（可輸出）'
   return { label, time }
 })

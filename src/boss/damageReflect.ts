@@ -174,7 +174,7 @@ export function upcomingEvents(
         push({ at: end, label: '反盾阻止成功（可輸出）', canAttack: true })
         s = { phase: 'blocked', phaseStart: end, dispelValid: false, lastDispelAt: s.lastDispelAt }
       } else {
-        push({ at: end, label: '反盾開始（禁止輸出）', canAttack: false })
+        push({ at: end, label: '反盾期間（禁止輸出）', canAttack: false })
         s = { phase: 'reflect', phaseStart: end, dispelValid: false, lastDispelAt: s.lastDispelAt }
       }
     } else {

@@ -88,7 +88,7 @@ describe('未來事件表', () => {
     expect(events.map((e) => e.label)).toEqual([
       '反盾結束（可輸出）',
       '使用魔消！',
-      '反盾開始（禁止輸出）',
+      '反盾期間（禁止輸出）',
     ])
     expect(events[0].at).toBe(T0 + 25_000)
     expect(events[1].at).toBe(T0 + 25_000 + 15_000)
@@ -103,14 +103,14 @@ describe('未來事件表', () => {
     expect(events.map((e) => e.label)).toEqual([
       '反盾阻止成功（可輸出）',
       '反盾預定結束（間隔開始）',
-      '反盾開始（禁止輸出）',
+      '反盾期間（禁止輸出）',
     ])
   })
 
   it('已過的魔消提醒不列出', () => {
     const s = startInterval(T0)
     const events = upcomingEvents(s, P, T0 + 16_000, 2)
-    expect(events[0].label).toBe('反盾開始（禁止輸出）')
+    expect(events[0].label).toBe('反盾期間（禁止輸出）')
   })
 })
 
