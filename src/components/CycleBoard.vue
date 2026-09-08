@@ -79,10 +79,10 @@ function progress(id: string, interval: number): number {
         </div>
         <div class="remaining-row seg-row">
           <button type="button" class="btn btn-sm nudge" title="減 1 秒"
-            :disabled="clocks[c.id] == null" @click="onNudge(c.id, -1)">−1s</button>
+            :disabled="clocks[c.id] == null" @click="onNudge(c.id, -1)">−<span class="nudge-unit">1s</span></button>
           <span class="seg-remaining">{{ clocks[c.id] == null ? '—' : `${leftOf(c.id, c.interval)}s` }}</span>
           <button type="button" class="btn btn-sm nudge" title="加 1 秒"
-            :disabled="clocks[c.id] == null" @click="onNudge(c.id, 1)">＋1s</button>
+            :disabled="clocks[c.id] == null" @click="onNudge(c.id, 1)">＋<span class="nudge-unit">1s</span></button>
         </div>
         <div class="phase-bar">
           <div class="phase-bar-fill" :style="{ width: progress(c.id, c.interval) + '%' }" />

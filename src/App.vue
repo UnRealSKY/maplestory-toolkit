@@ -409,11 +409,15 @@ button { font-family: inherit; }
   align-items: stretch;
 }
 .pip-body .cycle-item { padding: 4px 3px; gap: 2px; }
-.pip-body .cycle-item .phase-title { font-size: 13px; }
-.pip-body .cycle-item .phase-remaining { font-size: 19px; }
-.pip-body .cycle-item .nudge { padding: 1px 4px; font-size: 11px; }
+/* 五格並排每格只有 86px，−1s／＋1s 兩顆塞不下會擠出格子邊界；PiP 裡只留符號。
+   CycleBoard scoped 的 .cycle-item .nudge[data-v] 跟 .pip-body .cycle-item .nudge 同特異性、
+   後載入的贏，所以多加 .btn 才壓得過（標題與倒數的縮字規則同樣輸給 scoped，但視窗現在
+   夠高不縮放、你要的就是大字，那兩條直接拿掉讓元件原值生效） */
+.pip-body .cycle-item .btn.nudge { padding: 2px 6px; font-size: 13px; }
+.pip-body .cycle-item .nudge-unit { display: none; }
 .pip-body .cycle-item .seg-remaining { padding: 1px 4px; font-size: 11px; }
-.pip-body .cycle-item .trigger { margin-top: 3px; padding: 3px 4px; font-size: 12px; }
+/* 跟反盾的五顆 .ctrl 同一個尺寸——同樣是打王時要按的主按鈕，不該一邊 36px 一邊 22px */
+.pip-body .cycle-item .trigger { margin-top: 3px; padding: 10px 4px; font-size: 14px; }
 .pip-body .pip-clock {
   padding: 0 2px 3px; margin-bottom: 3px;
   background: none; border: none; box-shadow: none;
