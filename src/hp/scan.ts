@@ -469,10 +469,14 @@ const WHITE_DE = 12
 const LINING_DROP = 6
 /** 連續白段至少這麼長才算數，濾掉零星白點 */
 const RUN_MIN = 8
+/** 白段加起來至少佔下邊線跨距多少——被 UI 蓋住的實測還有 47% */
+const WHITE_RUN_FRAC = 0.25
 /** 白線實際存在的區段裡，前幾色要佔多少才算血條 */
 const BAR_COLOR_FRAC = 0.8
 /** 分界點跟中位數的容許差 */
 const SPLIT_TOL = 8
+/** 框內至少這麼多比例的列，分界要合中位數 */
+const SPLIT_AGREE_FRAC = 0.3
 /** 顏色分群的 ΔE 半徑 */
 const CLUSTER_DE = 10
 /** 分界處抗鋸齒過渡帶最多幾格 */
@@ -544,16 +548,16 @@ export interface BottomEdge {
 }
 
 /**
- * 找外框的下邊線。被 UI 蓋住時只剩 47% 的白，所以要把斷開的白段接回同一條線；
- * 能不能接看的不是距離，而是「缺口上方是不是還是血條」。
+ * 找外框下邊線的候選，由上往下排。被 UI 蓋住時只剩 47% 的白，所以要把斷開的
+ * 白段接回同一條線；能不能接看的不是距離，而是「缺口上方是不是還是血條」。
+ *
+ * 不在這裡挑「最寬的」：畫面縮到一半時，血條下方「Boss通知」橫幅的上緣白線
+ * 會跟右邊一個 12px 的白點橋接成 965px，比真底線的 771px 寬。哪條才是要靠
+ * 框內的分界一致性決定，交給 findBarFrame。
  */
-export function findBottomEdge(
-  data: Pixels,
-  width: number,
-  height: number,
-): BottomEdge | null {
+export function findBottomEdges(data: Pixels, width: number, height: number): BottomEdge[] {
   const minWidth = width * FRAME_MIN_WIDTH_FRAC
-  let best: BottomEdge | null = null
+  const found: BottomEdge[] = []
   for (let y = 2; y < height - 2; y++) {
     const runs: Span[] = []
     let start = -1
@@ -585,6 +589,10 @@ export function findBottomEdge(
       if (next) group = { a: next.a, b: next.b, spans: [next] }
     }
     if (!widest || widest.b - widest.a + 1 < minWidth) continue
+    // 白段本身要夠多。血條被 UI 蓋住時還有 47% 是白；世界地圖對話框的白邊
+    // 只在兩端各露幾格（3.6%），中間整片是對話框本體，橋接測試擋不住它
+    const whiteTotal = widest.spans.reduce((n, s) => n + (s.b - s.a + 1), 0)
+    if (whiteTotal / (widest.b - widest.a + 1) < WHITE_RUN_FRAC) continue
     // 這條線上方必須是血條。只取樣白線實際存在的區段——缺口那幾百格是被 UI
     // 蓋住的，算進去會把三色比從 90% 壓到 47%，真血條反而過不了篩選
     const inner = widest.spans.map((s) => ({ a: s.a + 5, b: s.b - 5 })).filter((s) => s.b > s.a)
@@ -593,11 +601,9 @@ export function findBottomEdge(
       if (topColorShare(data, width, y - k, inner, 3, 5) >= BAR_COLOR_FRAC) ok++
     }
     if (ok < 4) continue
-    if (!best || widest.b - widest.a > best.x1 - best.x0) {
-      best = { y, x0: widest.a, x1: widest.b, spans: widest.spans }
-    }
+    found.push({ y, x0: widest.a, x1: widest.b, spans: widest.spans })
   }
-  return best
+  return found
 }
 
 export interface RowSplit {
@@ -669,10 +675,31 @@ export interface BarFrame extends Rect {
   splitX: number
 }
 
-/** 找出血條的外框與血量分界。回傳的框已經往內縮掉外框本身。 */
+/**
+ * 找出血條的外框與血量分界。回傳的框已經往內縮掉外框本身。
+ *
+ * 候選線由上往下試，第一條「框內有分界、而且分界垂直對齊」的就是血條——
+ * 一條血條不可能把另一條底線包在裡面，而血條又是畫面最上方的 UI。
+ * 整條同色的候選（滿血或空血，沒有分界可比）只在沒有別的候選時才採用，
+ * 免得血條自己的上框線被當成一條空血條。
+ */
 export function findBarFrame(data: Pixels, width: number, height: number): BarFrame | null {
-  const edge = findBottomEdge(data, width, height)
-  if (!edge) return null
+  let uniform: BarFrame | null = null
+  for (const edge of findBottomEdges(data, width, height)) {
+    const fr = frameFromEdge(data, width, edge)
+    if (!fr) continue
+    if (fr.agreeing > 0) return fr
+    uniform ??= fr
+  }
+  return uniform
+}
+
+/** 以這條下邊線為底算出的框；分界對不齊回 null */
+function frameFromEdge(
+  data: Pixels,
+  width: number,
+  edge: BottomEdge,
+): (BarFrame & { agreeing: number }) | null {
   const from = edge.x0 + 4
   const to = edge.x1 - 4
   if (to - from < width * FRAME_MIN_WIDTH_FRAC) return null
@@ -691,10 +718,17 @@ export function findBarFrame(data: Pixels, width: number, height: number): BarFr
   const xs = [...rows.values()].filter(clean).map((s) => s.x).sort((a, b) => a - b)
   let splitX = xs.length ? xs[Math.floor(xs.length / 2)] : to
   let top = bottom
+  let agreeing = 0
   for (let y = bottom; y >= fromY; y--) {
     const s = rows.get(y)!
-    if (clean(s) && Math.abs(s.x - splitX) <= SPLIT_TOL) top = y
+    if (!clean(s) || Math.abs(s.x - splitX) > SPLIT_TOL) continue
+    top = y
+    agreeing++
   }
+  // 血量分界是垂直對齊的：真血條每一列沒被遮住的分界都在同一個 x（被遮最多的
+  // 那張還有 47% 的列合中位數）。世界地圖對話框的白邊上方是場景，23 列裡只有
+  // 2 列碰巧相近。整條同色（xs 空）沒有分界可比，走下面的顏色判斷
+  if (xs.length && (agreeing < 3 || agreeing < (bottom - top + 1) * SPLIT_AGREE_FRAC)) return null
 
   // 左右收邊：從下邊線兩端往內走，直到顏色連續穩定。外框、抗鋸齒、暗襯的 ΔE
   // 會亂跳，血條內容一路穩定。這一步在解「左緣多算幾格導致比例偏低」
@@ -722,7 +756,7 @@ export function findBarFrame(data: Pixels, width: number, height: number): BarFr
     const full = only != null && classify(only[0], only[1], only[2]) === FILL
     splitX = full ? x1 : x0
   }
-  return { x0, x1, y0: top, y1: bottom, edgeY: edge.y, splitX }
+  return { x0, x1, y0: top, y1: bottom, edgeY: edge.y, splitX, agreeing }
 }
 
 /** [a,b] 這段裡最大的顏色群 */

@@ -112,6 +112,32 @@ describe('極低血量', () => {
   }
 })
 
+describe('畫面上沒有王', () => {
+  // 世界地圖畫面。對話框的白色標題邊佔螢幕寬 49%、正上方也比它暗，
+  // 光看下邊線會被當成血條。擋下來靠的是「血量分界垂直對齊」：真血條每一列
+  // 沒被遮住的分界都在同一個 x，這張 23 列裡只有 2 列碰巧相近
+  it('世界地圖對話框的白邊不是血條 → null', () => {
+    const f = frame('no-boss-world-map-2k', 2560, 288)
+    expect(findBarFrame(f.data, f.width, f.height)).toBeNull()
+    expect(scanHpBar(f.data, f.width, f.height, { topFrac: 1 })).toBeNull()
+  })
+})
+
+describe('血條下方有別的白線', () => {
+  // 凡雷恩的畫面，血條正下方貼著「Boss通知」橫幅，橫幅上緣也是一條白線、寬度
+  // 跟血條一樣。2560 寬時沒事；縮到一半（Windows 200% 縮放或串流減半）暗色
+  // 背景的雜訊被平均掉，那條線就跟右邊一個 12px 的白點橋接成 965px，比真底線
+  // 771px 寬。「最寬的贏」會選到它，分母多出 190px，97% 讀成 78%。
+  // 一條血條不可能把另一條底線包在裡面——候選由上往下取第一個分界一致的
+  it('Boss通知橫幅的上緣不會搶走血條的底線', () => {
+    const f = frame('hp-97-notice-banner-1280', 1280, 144)
+    const fr = findBarFrame(f.data, f.width, f.height)!
+    expect(fr.edgeY).toBe(27)
+    expect(fr.x1).toBeLessThan(1060)
+    expect(hp(f.data, f.width, f.height)).toBeCloseTo(97.2, 0)
+  })
+})
+
 describe('真實畫面的血量（八張）', () => {
   const 答案: Array<[string, number, number, number]> = [
     ['hp-20', 19.8, 1280, 144],
