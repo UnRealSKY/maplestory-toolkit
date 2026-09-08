@@ -82,7 +82,7 @@ export function scan(): void {
   const rect = manualRect.value ? toPixels(manualRect.value, frame.width, frame.height) : null
   const res = rect
     ? { ...readRatioIn(frame.data, frame.width, rect), rect }
-    : scanHpBar(frame.data, frame.width, frame.height, { topFrac: 1 })
+    : scanHpBar(frame.data, frame.width, frame.height)
   if (!res || res.total === 0) {
     ratio.value = null
     clearHpNow()

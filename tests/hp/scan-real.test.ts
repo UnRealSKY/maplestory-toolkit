@@ -17,7 +17,7 @@ function frame(name: string, width = 1280, height = 144) {
 }
 const hp = (name: string, width?: number, height?: number) => {
   const f = frame(name, width, height)
-  const r = scanHpBar(f.data, f.width, f.height, { topFrac: 1 })
+  const r = scanHpBar(f.data, f.width, f.height)
   return r ? Math.round(r.ratio * 1000) / 10 : null
 }
 
@@ -40,7 +40,7 @@ describe('真實畫面', () => {
 
   // 2560x1440 的螢幕、經過 JPEG q0.9 重新編碼——模擬 getDisplayMedia 串流的有損壓縮。
   // 無損截圖能過、實際擷取卻「找不到血條」就是這個：血條高 30px 時外框落在往外
-  // 第 4~5 格，壓縮讓上下界偏 1px 就超出 hasBorder 的搜尋距離
+  // 第 4~5 格，壓縮讓上下界偏 1px 就超出當時外框搜尋的距離
   it('2K 解析度、串流有損壓縮：往外找外框的距離要跟著血條高度放大', () => {
     expect(hp('hp-80-multi-2k-jpeg', 2560, 288)).toBeCloseTo(80.0, 0)
   })

@@ -34,7 +34,7 @@ function paint(spec: BarSpec = {}) {
   const y0 = spec.y0 ?? 10
   const y1 = spec.y1 ?? 24
   const bg = spec.background ?? [20, 20, 30]
-  const border = spec.border ?? [220, 220, 220]
+  const border = spec.border ?? [255, 255, 255] // 遊戲的外框底線是純白
   const empty = spec.empty ?? [70, 70, 70]
   const fills = spec.fills ?? [[80, [220, 30, 10]]]
   const data = new Uint8ClampedArray(width * height * 4)
@@ -113,7 +113,7 @@ describe('像素分類', () => {
 describe('自動判讀血條', () => {
   it('找到血條並算出比例', () => {
     const { data, width, height, x0, x1 } = paint({ fills: [[80, [220, 30, 10]]] })
-    const res = scanHpBar(data, width, height, { topFrac: 1 })!
+    const res = scanHpBar(data, width, height)!
     expect(res).not.toBeNull()
     expect(res.rect.x0).toBe(x0)
     expect(res.rect.x1).toBe(x1)
@@ -122,14 +122,14 @@ describe('自動判讀血條', () => {
 
   it('滿血（整條都是血、沒有空槽）算 100%', () => {
     const { data, width, height } = paint({ fills: [[161, [220, 30, 10]]] })
-    expect(scanHpBar(data, width, height, { topFrac: 1 })!.ratio).toBe(1)
+    expect(scanHpBar(data, width, height)!.ratio).toBe(1)
   })
 
   it('多條血：右邊露出的下一條底色不算血，只算最左邊那段', () => {
     const { data, width, height, x0, x1 } = paint({
       fills: [[80, [4, 120, 207]], [81, [0, 202, 185]]], // 藍＝剩下的血，青＝下一條的底
     })
-    const res = scanHpBar(data, width, height, { topFrac: 1 })!
+    const res = scanHpBar(data, width, height)!
     expect(res.ratio).toBeCloseTo(80 / (x1 - x0 + 1), 2)
     expect(res.color).toBe('4,120,207')
     expect(res.nextColor).toBe('0,202,185')
@@ -137,7 +137,7 @@ describe('自動判讀血條', () => {
 
   it('最後一條血：右邊是灰色空槽，沒有下一條顏色', () => {
     const { data, width, height, x0, x1 } = paint({ fills: [[60, [220, 30, 10]]] })
-    const res = scanHpBar(data, width, height, { topFrac: 1 })!
+    const res = scanHpBar(data, width, height)!
     expect(res.ratio).toBeCloseTo(60 / (x1 - x0 + 1), 2)
     expect(res.color).toBe('220,30,10')
     expect(res.nextColor).toBeNull()
@@ -145,14 +145,14 @@ describe('自動判讀血條', () => {
 
   it('空槽右邊接著同色背景時，外框把右端收住', () => {
     const { data, width, height, x1 } = paint({ greyRight: true })
-    expect(scanHpBar(data, width, height, { topFrac: 1 })!.rect.x1).toBe(x1)
+    expect(scanHpBar(data, width, height)!.rect.x1).toBe(x1)
   })
 
   it('左外框外糊了一圈陰影時，起點要落在血條內容上', () => {
     // 畫面縮小後外框旁常糊出一片跟空槽同色的陰影，
     // 從那裡起算會在左外框就撞牆，整條血條只框到兩三個像素
     const { data, width, height, x0, x1 } = paint({ greyLeft: true, fills: [[80, [220, 30, 10]]] })
-    const res = scanHpBar(data, width, height, { topFrac: 1 })!
+    const res = scanHpBar(data, width, height)!
     expect(res.rect.x0).toBe(x0)
     expect(res.rect.x1).toBe(x1)
     expect(res.ratio).toBeCloseTo(80 / (x1 - x0 + 1), 2)
@@ -162,14 +162,14 @@ describe('自動判讀血條', () => {
     // 併進來的話上下界就垮了，右端的整欄檢查會在空槽處失敗，
     // 空槽整段被排除、血量算成滿的
     const { data, width, height, x0, x1 } = paint({ bandBelow: true, fills: [[80, [220, 30, 10]]] })
-    const res = scanHpBar(data, width, height, { topFrac: 1 })!
+    const res = scanHpBar(data, width, height)!
     expect(res.rect.x1).toBe(x1)
     expect(res.ratio).toBeCloseTo(80 / (x1 - x0 + 1), 2)
   })
 
   it('血條位置與長度換了也照樣讀得到——視窗大小會變', () => {
     const a = paint({ width: 300, height: 60, x0: 40, x1: 260, y0: 12, y1: 30, fills: [[110, [220, 30, 10]]] })
-    const res = scanHpBar(a.data, a.width, a.height, { topFrac: 1 })!
+    const res = scanHpBar(a.data, a.width, a.height)!
     expect(res.rect.x0).toBe(40)
     expect(res.rect.x1).toBe(260)
     expect(res.ratio).toBeCloseTo(110 / 221, 2)
@@ -177,20 +177,18 @@ describe('自動判讀血條', () => {
 
   it('沒有外框的長條色塊不算血條——沒在打王時不該有讀數', () => {
     const { data, width, height } = paint({ noBorder: true, fills: [[80, [220, 30, 10]]] })
-    expect(scanHpBar(data, width, height, { topFrac: 1 })).toBeNull()
+    expect(scanHpBar(data, width, height)).toBeNull()
   })
 
-  it('血量很低又碰上下緣被蓋住時照樣讀得到', () => {
-    // 這時候血條左邊只剩幾格血，量上下界的基準欄若落在空槽上，
-    // 那條灰會跟下方的 UI 帶連成一片，範圍一垮讀數就沒意義了
-    const { data, width, height, x0, x1 } = paint({
+  it('下緣外框整條被蓋住時回 null——沒有外框就不猜', () => {
+    // 邊界是外框定的。外框整條看不到時，從內容顏色去猜範圍的舊路徑會把
+    // 空槽跟下方的 UI 帶連成一片、把對話框的色帶當成滿血；寧可沒有讀數
+    const { data, width, height } = paint({
       height: 200,
       coverBottom: true,
       fills: [[8, [220, 30, 10]]],
     })
-    const res = scanHpBar(data, width, height, { topFrac: 1 })!
-    expect(res).not.toBeNull()
-    expect(res.ratio).toBeCloseTo(8 / (x1 - x0 + 1), 2)
+    expect(scanHpBar(data, width, height)).toBeNull()
   })
 
   it('畫面上沒有血條就回 null', () => {
@@ -199,12 +197,12 @@ describe('自動判讀血條', () => {
     for (let i = 0; i < data.length; i += 4) {
       data[i] = 20; data[i + 1] = 20; data[i + 2] = 30; data[i + 3] = 255
     }
-    expect(scanHpBar(data, width, height, { topFrac: 1 })).toBeNull()
+    expect(scanHpBar(data, width, height)).toBeNull()
   })
 
   it('短短的裝飾長條不會被當成血條', () => {
     const { data, width, height } = paint({ width: 400, x0: 20, x1: 90 }) // 只佔 17% 寬
-    expect(scanHpBar(data, width, height, { topFrac: 1 })).toBeNull()
+    expect(scanHpBar(data, width, height)).toBeNull()
   })
 })
 

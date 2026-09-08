@@ -11,7 +11,7 @@ function frame(name: string, width = 1280, height = 144) {
   return { data: new Uint8ClampedArray(gunzipSync(gz)), width, height }
 }
 const hp = (data: Uint8ClampedArray, w: number, h: number) => {
-  const r = scanHpBar(data, w, h, { topFrac: 1 })
+  const r = scanHpBar(data, w, h)
   return r ? Math.round(r.ratio * 1000) / 10 : null
 }
 
@@ -119,7 +119,17 @@ describe('畫面上沒有王', () => {
   it('世界地圖對話框的白邊不是血條 → null', () => {
     const f = frame('no-boss-world-map-2k', 2560, 288)
     expect(findBarFrame(f.data, f.width, f.height)).toBeNull()
-    expect(scanHpBar(f.data, f.width, f.height, { topFrac: 1 })).toBeNull()
+    expect(scanHpBar(f.data, f.width, f.height)).toBeNull()
+  })
+})
+
+describe('外框找不到就回 null，不退回用顏色猜', () => {
+  // 開著遠征隊對話框、沒有王的畫面。畫面上沒有任何一條合格的白線，舊的
+  // 顏色爬行路徑卻把對話框裡那條橘色標題帶（只佔螢幕寬 25%）當成滿血，
+  // 子母畫面顯示 100%。沒有外框就是沒有讀數
+  it('遠征隊對話框的橘色標題帶不是血條 → null', () => {
+    const f = frame('no-boss-party-dialog-2k', 2560, 288)
+    expect(scanHpBar(f.data, f.width, f.height)).toBeNull()
   })
 })
 
