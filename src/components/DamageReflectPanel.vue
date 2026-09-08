@@ -161,7 +161,7 @@ const nextPhaseInfo = computed(() => {
   </div>
 
   <!-- 操作 -->
-  <div class="card">
+  <div class="card controls-card">
     <div class="controls">
       <button type="button" class="btn ctrl ctrl-reflect" @click="startReflect">反盾開始</button>
       <button type="button" class="btn ctrl ctrl-interval" @click="startInterval">反盾結束</button>

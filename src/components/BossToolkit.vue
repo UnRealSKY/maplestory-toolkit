@@ -45,7 +45,9 @@ async function togglePip() {
     pipBody.value = null
     return
   }
-  const win = await openPipWindow({ width: 480, height: 200 })
+  // 高度要塞得下最高的王（阿卡進 70 秒循環時內容 250px）加標題列。塞得下
+  // fitToWindow 就不會縮，字級固定、換王也不會整個視窗忽大忽小
+  const win = await openPipWindow({ width: 480, height: 310 })
   if (!win) return
   win.addEventListener('pagehide', () => (pipBody.value = null))
   pipBody.value = win.document.body

@@ -355,10 +355,15 @@ button { font-family: inherit; }
   margin: 0; padding: 5px; background: var(--bg); overflow: hidden;
   /* 小視窗上都是要連點的按鈕，手一滑就整片反白，看起來像壞掉 */
   user-select: none; -webkit-user-select: none;
-  /* 時鐘與血量擠成同一列，省下來的高度全部回饋到縮放倍率 */
-  display: flex; flex-wrap: wrap; align-content: flex-start;
+  /* 縱向排：時間、血條、機制各佔自己的高度，反盾的操作區吃掉底下剩餘的空間——
+     矮的王（反盾王 196 vs 阿卡 250）底下才不會空一截。視窗開得夠高（310）時
+     fitToWindow 判定塞得下就不縮，縮放固定 1，字級固定、換王不會整個視窗忽大忽小 */
+  display: flex; flex-direction: column; align-items: stretch; min-height: 100vh; box-sizing: border-box;
 }
-.pip-body > * { flex: 0 0 100%; }
+.pip-body > * { flex: 0 0 auto; }
+.pip-body > :last-child { margin-bottom: 0; }
+/* 剩餘的高度給血條——打王時眼睛盯的是它；按鈕固定高，不跟著長 */
+.pip-body > .hp-card { flex: 1 0 auto; display: flex; flex-direction: column; }
 /* 只有輸入框留著可以選、可以編輯 */
 .pip-body input { user-select: text; -webkit-user-select: text; }
 .pip-body.app { max-width: none; padding: 5px; }
@@ -380,11 +385,13 @@ button { font-family: inherit; }
 .pip-body .phase-bar { height: 4px; margin-top: 4px; }
 .pip-body .remaining-row, .pip-body .seg-row { margin-top: 2px; gap: 5px; }
 /* DamageReflectPanel scoped 的 .ctrl[data-v] { min-width: 120px } 跟 .pip-body .ctrl 同特異性、
-   它後載入所以贏——min-width: 0 從來沒生效過。後果不只是視窗拉窄會被切：五顆按鈕最少
-   600px，在 480 寬的子母畫面裡 width 100% 時被迫換成兩行、fitToWindow 撐開 width 後又縮回
-   一行，高度來回跳讓縮放算不收斂，只好取矮的那個，底下空掉三成。多寫一層 .controls 壓過去 */
-.pip-body .controls .ctrl { min-width: 0; padding: 5px 4px; font-size: 12px; }
-.pip-body .controls { gap: 4px; }
+   它後載入所以贏——min-width: 0 從來沒生效過，五顆按鈕最少 600px 塞不進 480 寬。多寫一層
+   .controls 壓過去 */
+.pip-body .controls .ctrl { min-width: 0; padding: 10px 4px; font-size: 14px; }
+.pip-body .controls { gap: 6px; }
+/* 折行只看視窗寬，不看 fitToWindow 撐開後的 body 寬——不然換行改高度、高度改縮放、
+   縮放又改換行，算不收斂。窄視窗 3+2 兩排 */
+@media (max-width: 420px) { .pip-body .controls .ctrl { flex-basis: 30%; } }
 /* 小視窗放不下也不需要的：操作說明、事件表、待機時的提示 */
 .pip-body .ctrl-hint, .pip-body .phase-note, .pip-body .events-card { display: none; }
 /* 標題在小視窗裡是廢話，血條本身就說明一切；「下次」「60s」同理 */
