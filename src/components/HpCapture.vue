@@ -105,6 +105,14 @@ const restColor = computed(() => (nextColor.value ? `rgb(${nextColor.value})` : 
     <template v-if="capturing">
       <p v-if="percent == null" class="muted no-bar">找不到血條，可以用「框選血條」直接指定範圍</p>
       <template v-else>
+        <!-- 換色時上一條還高於 5%：不是打完，是換階段或換王。凍住留 10 秒，跟新的一條對照 -->
+        <div v-if="previousBar" class="hp-previous">
+          <img v-if="previousBar.reading.portraitUrl" class="hp-portrait" :src="previousBar.reading.portraitUrl" alt="" />
+          <div class="hp-bar">
+            <div class="hp-bar-fill" :style="{ width: `${previousBar.reading.ratio * 100}%`, background: `rgb(${previousBar.reading.color ?? '200,40,40'})` }" />
+          </div>
+          <span class="hp-previous-pct">{{ (previousBar.reading.ratio * 100).toFixed(1) }}%</span>
+        </div>
         <div class="hp-live">
           <img v-if="portraitUrl" class="hp-portrait" :src="portraitUrl" alt="" />
           <div class="hp-main">
@@ -121,14 +129,6 @@ const restColor = computed(() => (nextColor.value ? `rgb(${nextColor.value})` : 
               </div>
             </div>
           </div>
-        </div>
-        <!-- 換色時上一條還高於 5%：不是打完，是換階段或換王。凍住留 10 秒，跟新的一條對照 -->
-        <div v-if="previousBar" class="hp-previous">
-          <img v-if="previousBar.reading.portraitUrl" class="hp-portrait" :src="previousBar.reading.portraitUrl" alt="" />
-          <div class="hp-bar">
-            <div class="hp-bar-fill" :style="{ width: `${previousBar.reading.ratio * 100}%`, background: `rgb(${previousBar.reading.color ?? '200,40,40'})` }" />
-          </div>
-          <span class="hp-previous-pct">{{ (previousBar.reading.ratio * 100).toFixed(1) }}%</span>
         </div>
       </template>
     </template>
@@ -167,9 +167,9 @@ const restColor = computed(() => (nextColor.value ? `rgb(${nextColor.value})` : 
   background: var(--surface-2); border: 1px solid var(--border);
 }
 .hp-bar-fill { height: 100%; }
-/* 上一條：變暗、縮小，放在現在這條下面。子母畫面的卡片是固定高度，多這一列也不會擠到別人 */
+/* 上一條：變暗、縮小，放在現在這條上面。子母畫面的卡片是固定高度，多這一列也不會擠到別人 */
 .hp-previous {
-  display: flex; align-items: center; gap: 8px; height: 24px; margin-top: 6px; opacity: .55;
+  display: flex; align-items: center; gap: 8px; height: 24px; margin-bottom: 6px; opacity: .55;
 }
 .hp-previous .hp-portrait { width: 24px; height: 24px; border-radius: 4px; }
 .hp-previous .hp-bar { flex: 1; height: 8px; }

@@ -422,7 +422,7 @@ button { font-family: inherit; }
 .pip-body.app .hp-bar { height: 12px; }
 .pip-body.app .hp-live { gap: 6px; }
 .pip-body.app .hp-portrait { width: 36px; height: 36px; }
-.pip-body.app .hp-previous { height: 16px; margin-top: 2px; gap: 6px; }
+.pip-body.app .hp-previous { height: 16px; margin-bottom: 2px; gap: 6px; }
 .pip-body.app .hp-previous .hp-portrait { width: 16px; height: 16px; }
 .pip-body.app .hp-previous .hp-bar { height: 6px; }
 .pip-body.app .hp-previous-pct { font-size: 11px; }
