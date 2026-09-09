@@ -6,6 +6,8 @@ import {
   ratio,
   color,
   nextColor,
+  portraitUrl,
+  previousBar,
   points,
   manualRect,
   percent,
@@ -103,17 +105,30 @@ const restColor = computed(() => (nextColor.value ? `rgb(${nextColor.value})` : 
     <template v-if="capturing">
       <p v-if="percent == null" class="muted no-bar">找不到血條，可以用「框選血條」直接指定範圍</p>
       <template v-else>
-        <div class="hp-bar" :style="{ background: restColor }">
-          <div class="hp-bar-fill" :style="{ width: `${(ratio ?? 0) * 100}%`, background: fillColor }" />
-        </div>
-        <div class="hp-row">
-          <div class="hp-percent">{{ percent.toFixed(1) }}<span class="unit">%</span></div>
-          <span v-if="eta" class="chip chip-eta">預估 {{ eta }}</span>
-          <div v-if="dps != null" class="hp-dps">
-            <span class="stat"><i>DPS</i><b>{{ dps.toFixed(1) }}%</b></span>
-            <span v-if="peak60 != null" class="stat"><i>60秒最高</i><b>{{ peak60.toFixed(1) }}%</b></span>
-            <span v-if="peakAll != null" class="stat"><i>整場最高</i><b>{{ peakAll.toFixed(1) }}%</b></span>
+        <div class="hp-live">
+          <img v-if="portraitUrl" class="hp-portrait" :src="portraitUrl" alt="" />
+          <div class="hp-main">
+            <div class="hp-bar" :style="{ background: restColor }">
+              <div class="hp-bar-fill" :style="{ width: `${(ratio ?? 0) * 100}%`, background: fillColor }" />
+            </div>
+            <div class="hp-row">
+              <div class="hp-percent">{{ percent.toFixed(1) }}<span class="unit">%</span></div>
+              <span v-if="eta" class="chip chip-eta">預估 {{ eta }}</span>
+              <div v-if="dps != null" class="hp-dps">
+                <span class="stat"><i>DPS</i><b>{{ dps.toFixed(1) }}%</b></span>
+                <span v-if="peak60 != null" class="stat"><i>60秒最高</i><b>{{ peak60.toFixed(1) }}%</b></span>
+                <span v-if="peakAll != null" class="stat"><i>整場最高</i><b>{{ peakAll.toFixed(1) }}%</b></span>
+              </div>
+            </div>
           </div>
+        </div>
+        <!-- 換色時上一條還高於 5%：不是打完，是換階段或換王。凍住留 10 秒，跟新的一條對照 -->
+        <div v-if="previousBar" class="hp-previous">
+          <img v-if="previousBar.reading.portraitUrl" class="hp-portrait" :src="previousBar.reading.portraitUrl" alt="" />
+          <div class="hp-bar">
+            <div class="hp-bar-fill" :style="{ width: `${previousBar.reading.ratio * 100}%`, background: `rgb(${previousBar.reading.color ?? '200,40,40'})` }" />
+          </div>
+          <span class="hp-previous-pct">{{ (previousBar.reading.ratio * 100).toFixed(1) }}%</span>
         </div>
       </template>
     </template>
@@ -140,11 +155,28 @@ const restColor = computed(() => (nextColor.value ? `rgb(${nextColor.value})` : 
 .section-head .spacer { flex: 1; }
 .no-bar, .err { margin: 0; font-size: 13px; }
 
+.hp-live { display: flex; align-items: center; gap: 10px; }
+.hp-main { flex: 1; min-width: 0; }
+/* 遊戲裡的頭像是 44px 的像素圖，放大不要糊 */
+.hp-portrait {
+  flex: none; width: 44px; height: 44px; border-radius: 6px;
+  image-rendering: pixelated; background: var(--surface-2);
+}
 .hp-bar {
   display: flex; height: 18px; border-radius: 999px; overflow: hidden;
   background: var(--surface-2); border: 1px solid var(--border);
 }
 .hp-bar-fill { height: 100%; }
+/* 上一條：變暗、縮小，放在現在這條下面。子母畫面的卡片是固定高度，多這一列也不會擠到別人 */
+.hp-previous {
+  display: flex; align-items: center; gap: 8px; height: 24px; margin-top: 6px; opacity: .55;
+}
+.hp-previous .hp-portrait { width: 24px; height: 24px; border-radius: 4px; }
+.hp-previous .hp-bar { flex: 1; height: 8px; }
+.hp-previous-pct {
+  flex: none; font-size: 12px; font-family: var(--mono); font-variant-numeric: tabular-nums;
+  min-width: 5ch; text-align: right;
+}
 .hp-row { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; flex-wrap: nowrap; }
 /* 位數變動時版面不能跟著跳，所以固定字寬：最長就是 100.0 */
 .hp-percent {

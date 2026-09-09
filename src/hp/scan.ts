@@ -48,6 +48,8 @@ export interface HpReading {
   color: string | null
   /** 右邊露出來的下一條血顏色；只剩最後一條時是 null（那時右邊是灰色空槽） */
   nextColor: string | null
+  /** 血條左邊的王頭像方框；被蓋住或手動框選時是 null */
+  portrait: Rect | null
 }
 
 function px(data: Pixels, width: number, x: number, y: number): [number, number, number] {
@@ -140,7 +142,7 @@ export function readRatioIn(
     }
   }
   const key = (c: number[] | null) => (c ? `${c[0]},${c[1]},${c[2]}` : null)
-  return { fill, total, ratio: total ? fill / total : 0, color: key(head), nextColor: key(tail) }
+  return { fill, total, ratio: total ? fill / total : 0, color: key(head), nextColor: key(tail), portrait: null }
 }
 
 // ---- 先找外框，再讀框內 ----
@@ -485,6 +487,52 @@ function dominantColor(
   return groups.sort((p, q) => q.count - p.count)[0]?.rgb ?? null
 }
 
+// ---- 頭像 ----
+//
+// 王的頭像是一個正方形方框，貼在血條左邊、頂邊跟血條頂對齊。它跟血條外框
+// 的相對位置是 UI 寫死的，拿外框寬度（我們量得最準的量）當尺：
+//   邊長        0.057 個外框寬   1080p 44px、2K 88px
+//   左框到血條  0.070 個外框寬   54px、106px
+//   頂邊在底線上方 0.023 個外框寬  18px、35px
+// 五隻不同的王、兩種解析度都一致。只有左框用亮格校正——中線那一列很乾淨；
+// 頂框不校正：背景是亮色的天空或圖案本身是白的時候，「整列亮」分不出框線。
+
+const PORTRAIT_SIZE = 0.057
+const PORTRAIT_GAP = 0.07
+const PORTRAIT_TOP = 0.023
+/** 左框校正的搜尋範圍（外框寬的比例） */
+const PORTRAIT_SNAP = 0.012
+/** 亮框：亮度夠高就算，頭像框是灰白，被 JPEG 染一點色也還在 */
+const PORTRAIT_EDGE_L = 78
+
+/**
+ * 找出頭像方框（含它自己的亮框）。左框附近找不到亮格就回 null——
+ * 頭像被 UI 蓋住、或血條貼在畫面最左邊沒有頭像時。
+ */
+export function findPortrait(
+  data: Pixels,
+  width: number,
+  height: number,
+  bar: BarFrame,
+): Rect | null {
+  const barW = bar.x1 - bar.x0 + 1
+  const size = Math.round(barW * PORTRAIT_SIZE)
+  const mid = Math.floor((bar.y0 + bar.y1) / 2)
+  const bright = (x: number, y: number) => labAt(data, width, x, y)[0] >= PORTRAIT_EDGE_L
+  const want = bar.x0 - Math.round(barW * PORTRAIT_GAP)
+  const snap = Math.round(barW * PORTRAIT_SNAP)
+  let left = -1
+  for (let x = Math.max(0, want - snap); x <= want + snap; x++) {
+    if (!bright(x, mid)) continue
+    if (left < 0 || Math.abs(x - want) < Math.abs(left - want)) left = x
+  }
+  if (left < 0) return null
+  while (left > 0 && bright(left - 1, mid)) left-- // 亮框有 2～3 格厚，取最外側
+  const top = bar.edgeY - Math.round(barW * PORTRAIT_TOP)
+  if (top < 0 || top + size >= height || left + size >= width) return null
+  return { x0: left, x1: left + size, y0: top, y1: top + size }
+}
+
 /** 自動判讀一整張畫面；找不到外框就回 null——沒有外框就不猜 */
 export function scanHpBar(data: Pixels, width: number, height: number): HpReading | null {
   const frame = findBarFrame(data, width, height)
@@ -506,5 +554,6 @@ export function scanHpBar(data: Pixels, width: number, height: number): HpReadin
     color: key(head),
     // 右邊是灰色空槽時代表這是最後一條血；是彩色才是下一條血露出來
     nextColor: tail && classify(tail[0], tail[1], tail[2]) === FILL ? key(tail) : null,
+    portrait: findPortrait(data, width, height, frame),
   }
 }

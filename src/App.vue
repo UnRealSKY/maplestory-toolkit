@@ -373,7 +373,7 @@ button { font-family: inherit; }
 /* 剩餘的高度給血條——打王時眼睛盯的是它；按鈕固定高，不跟著長 */
 /* 血條區固定高、不伸不縮。內容最多的狀態（擷取中＋有血條＋手動範圍標籤＋四顆按鈕）
    量到 88px，取 92 留一點餘裕——沒擷取時空著也是這個高度，數字出現不會把底下推走 */
-.pip-body.app > .hp-card { flex: 0 0 92px; }
+.pip-body.app > .hp-card { flex: 0 0 110px; } /* 92 + 上一條那列 18 */
 /* 只有輸入框留著可以選、可以編輯 */
 .pip-body.app input { user-select: text; -webkit-user-select: text; }
 .pip-body.app { max-width: none; padding: 5px; }
@@ -420,6 +420,12 @@ button { font-family: inherit; }
 .pip-body.app .hp-card .section-head { margin-bottom: 2px; }
 .pip-body.app .hp-card .btn { padding: 3px 8px; font-size: 12px; }
 .pip-body.app .hp-bar { height: 12px; }
+.pip-body.app .hp-live { gap: 6px; }
+.pip-body.app .hp-portrait { width: 36px; height: 36px; }
+.pip-body.app .hp-previous { height: 16px; margin-top: 2px; gap: 6px; }
+.pip-body.app .hp-previous .hp-portrait { width: 16px; height: 16px; }
+.pip-body.app .hp-previous .hp-bar { height: 6px; }
+.pip-body.app .hp-previous-pct { font-size: 11px; }
 .pip-body.app .hp-row { margin-top: 2px; }
 .pip-body.app .hp-percent { font-size: 24px; min-width: 5ch; }
 .pip-body.app .hp-dps { font-size: 11px; }

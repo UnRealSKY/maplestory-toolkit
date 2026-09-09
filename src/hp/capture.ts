@@ -5,9 +5,10 @@
 // 「從畫面同步」讀遊戲計時時也是拿這同一份畫面。
 
 import { computed, ref, shallowRef } from 'vue'
-import { scanHpBar, readRatioIn, type Rect } from './scan'
-import { pushPoint, recentDps, pushDps, peakDps, etaSeconds, type HpPoint, type DpsSample } from './history'
+import { scanHpBar, readRatioIn, type Rect, type HpReading } from './scan'
+import { pushPoint, recentDps, pushDps, peakDps, etaSeconds, sameBar, type HpPoint, type DpsSample } from './history'
 import { setHpNow, clearHpNow } from './current'
+import { createDebounce, settle, type PreviousBar } from './debounce'
 
 // 掃描頻率。血條變化不需要每幀讀，一秒一次就夠，
 // 而且瀏覽器切到背景時 setInterval 本來就會被壓到一秒一次。
@@ -23,9 +24,16 @@ const stream = shallowRef<MediaStream | null>(null)
 export const capturing = computed(() => stream.value != null)
 export const error = ref('')
 
+/** 即時讀數：判讀結果加上裁下來的頭像（dataURL） */
+export type LiveReading = HpReading & { portraitUrl: string | null }
+
 export const ratio = ref<number | null>(null)
 export const color = ref<string | null>(null)
 export const nextColor = ref<string | null>(null)
+export const portraitUrl = ref<string | null>(null)
+/** 換色後凍住的上一條血，帶著它的頭像；到期就 null */
+export const previousBar = ref<PreviousBar<LiveReading> | null>(null)
+let debounce = createDebounce<LiveReading>()
 export const points = ref<HpPoint[]>([])
 export const dpsSamples = ref<DpsSample[]>([])
 /** 手動框選（存畫面比例，視窗大小變了也還能用） */
@@ -39,6 +47,8 @@ export interface Frame {
   height: number
   /** 需要把畫面做成圖片時用（手動框選的快照） */
   toDataURL: () => string
+  /** 裁一塊下來做成圖片（頭像） */
+  crop: (rect: Rect) => string
 }
 
 /**
@@ -60,6 +70,13 @@ export function grabFrame(topFrac = 1): Frame | null {
     width: w,
     height: h,
     toDataURL: () => canvas.toDataURL('image/png'),
+    crop: (rect) => {
+      const c = document.createElement('canvas')
+      c.width = rect.x1 - rect.x0 + 1
+      c.height = rect.y1 - rect.y0 + 1
+      c.getContext('2d')?.drawImage(canvas, rect.x0, rect.y0, c.width, c.height, 0, 0, c.width, c.height)
+      return c.toDataURL('image/png')
+    },
   }
 }
 
@@ -80,24 +97,37 @@ export function scan(): void {
   const frame = grabFrame(TOP_FRAC)
   if (!frame) return
   const rect = manualRect.value ? toPixels(manualRect.value, frame.width, frame.height) : null
-  const res = rect
+  const raw = rect
     ? { ...readRatioIn(frame.data, frame.width, rect), rect }
     : scanHpBar(frame.data, frame.width, frame.height)
-  if (!res || res.total === 0) {
+  const live: LiveReading | null =
+    raw && raw.total > 0 ? { ...raw, portraitUrl: raw.portrait ? frame.crop(raw.portrait) : null } : null
+  // 單幀讀不到或換色，先過去抖動再決定畫面要顯示什麼、歷史要不要記
+  const at = Date.now()
+  const out = settle(debounce, live, at)
+  debounce = out.state
+  previousBar.value = out.previous
+  const res = out.reading
+  if (!res) {
     ratio.value = null
+    color.value = null
+    nextColor.value = null
+    portraitUrl.value = null
     clearHpNow()
     return
   }
   ratio.value = res.ratio
   color.value = res.color
   nextColor.value = res.nextColor
-  const at = Date.now()
-  points.value = pushPoint(points.value, at, res.ratio, res.color)
-  const speed = recentDps(points.value)
-  // 樣本帶著血條顏色，峰值才不會混到別的階段
-  if (speed != null) dpsSamples.value = pushDps(dpsSamples.value, at, speed, res.color)
-  // 血量門檻的機制面板讀的是這份
-  setHpNow(res.ratio * 100, speed, at)
+  portraitUrl.value = res.portraitUrl
+  if (out.record) {
+    points.value = pushPoint(points.value, at, res.ratio, res.color)
+    const speed = recentDps(points.value)
+    // 樣本帶著血條顏色，峰值才不會混到別的階段
+    if (speed != null) dpsSamples.value = pushDps(dpsSamples.value, at, speed, res.color)
+  }
+  // 血量門檻的機制面板讀的是這份；找不到時撐著的那幾秒也照樣給它上一次的值
+  setHpNow(res.ratio * 100, dps.value, at)
 }
 
 export async function startCapture(): Promise<void> {
@@ -124,6 +154,11 @@ export function stopCapture(): void {
   stream.value = null
   video.srcObject = null
   ratio.value = null
+  color.value = null
+  nextColor.value = null
+  portraitUrl.value = null
+  previousBar.value = null
+  debounce = createDebounce<LiveReading>()
 }
 
 export function clearHistory(): void {
@@ -139,7 +174,12 @@ export function useManualRect(rect: Rect | null): void {
 // ---- 顯示用的推算 ----
 const round1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10)
 export const percent = computed(() => (ratio.value == null ? null : Math.round(ratio.value * 1000) / 10))
-export const dps = computed(() => round1(recentDps(points.value)))
+// 換色確認中，歷史還停在上一條血；那條的速度不是現在這條的，不顯示
+export const dps = computed(() => {
+  const last = points.value[points.value.length - 1]
+  if (!last || !sameBar(last.color, color.value)) return null
+  return round1(recentDps(points.value))
+})
 export const peak60 = computed(() => round1(peakDps(dpsSamples.value, 60_000, color.value)))
 export const peakAll = computed(() => round1(peakDps(dpsSamples.value, undefined, color.value)))
 export const etaSec = computed(() => etaSeconds(percent.value, dps.value))

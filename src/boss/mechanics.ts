@@ -26,7 +26,7 @@ export const MECHANICS: Mechanic[] = [
   // [−][88s][＋]，上面那排最右的「重置」按鈕在計時中才會啟用，一起算進去要 393
   { id: 'cycle', name: '循環', pip: { width: 399, height: 269 } },
   // 看的不是時間而是血量，掉到門檻就出招（hp/thresholds.ts）
-  { id: 'hp', name: '血量', pip: { width: 347, height: 305 } },
+  { id: 'hp', name: '血量', pip: { width: 347, height: 323 } },
   // 沒有機制要算，只用血條看輸出
   { id: 'dps', name: 'DPS', pip: { width: 347, height: 132 } },
 ]
