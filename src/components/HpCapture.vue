@@ -155,7 +155,7 @@ const restColor = computed(() => (nextColor.value ? `rgb(${nextColor.value})` : 
 .section-head .spacer { flex: 1; }
 .no-bar, .err { margin: 0; font-size: 13px; }
 
-.hp-live { display: flex; align-items: center; gap: 10px; }
+.hp-live { display: flex; align-items: flex-start; gap: 10px; } /* 頭像頂端跟血條頂對齊，跟遊戲裡一樣 */
 .hp-main { flex: 1; min-width: 0; }
 /* 遊戲裡的頭像是 44px 的像素圖，放大不要糊 */
 .hp-portrait {
