@@ -23,8 +23,9 @@ export const MECHANICS: Mechanic[] = [
   // 各留 13px 餘裕要 461
   { id: 'damage-reflect', name: '反盾', pip: { width: 467, height: 384 } },
   // 多個各自固定間隔的機制，只算多久觸發一次（cycle.ts）。五格並排、格子裡要塞
-  // [−][88s][＋]，上面那排最右的「重置」按鈕在計時中才會啟用，一起算進去要 393
-  { id: 'cycle', name: '循環', pip: { width: 399, height: 269 } },
+  // [−][88s][＋]，上面那排最右的「重置」按鈕在計時中才會啟用，一起算進去要 393。
+  // 高多了一波判斷那一列（44＋下方間距 8）——那列等待時是兩行，高度固定不隨狀態變
+  { id: 'cycle', name: '循環', pip: { width: 399, height: 339 } },
   // 看的不是時間而是血量，掉到門檻就出招（hp/thresholds.ts）
   { id: 'hp', name: '血量', pip: { width: 347, height: 323 } },
   // 沒有機制要算，只用血條看輸出

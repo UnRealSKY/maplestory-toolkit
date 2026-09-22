@@ -182,7 +182,7 @@ describe('BossToolkit 切到循環模板的王（女皇）', () => {
     await pickBoss(queenChip(w))
     expect(w.find('.controls').exists()).toBe(false) // 反盾的操作區
     expect(items(w).map((li) => li.find('.phase-title').text())).toEqual([
-      '活屍60s', '鎖潛能90s', '變豬60s', '反盾80s', '小黑屋90s',
+      '反盾80s', '變豬60s', '小黑屋90s', '鎖潛能90s', '活屍60s',
     ])
   })
 
@@ -190,7 +190,7 @@ describe('BossToolkit 切到循環模板的王（女皇）', () => {
     const { w } = await mountToolkit()
     await pickBoss(queenChip(w))
     await items(w)[0].find('.trigger').trigger('click')
-    expect(items(w)[0].find('.seg-remaining').text()).toBe('60s')
+    expect(items(w)[0].find('.seg-remaining').text()).toBe('80s')
     expect(items(w)[1].find('.not-started').exists()).toBe(true)
   })
 
@@ -199,7 +199,7 @@ describe('BossToolkit 切到循環模板的王（女皇）', () => {
     await pickBoss(queenChip(w))
     await items(w)[0].find('.trigger').trigger('click')
     await items(w)[0].findAll('.nudge')[1].trigger('click') // ＋1s
-    expect(items(w)[0].find('.seg-remaining').text()).toBe('61s')
+    expect(items(w)[0].find('.seg-remaining').text()).toBe('81s')
     expect(items(w)[1].find('.not-started').exists()).toBe(true)
   })
 
@@ -216,16 +216,48 @@ describe('BossToolkit 切到循環模板的王（女皇）', () => {
     try {
       const { w } = await mountToolkit()
       await pickBoss(queenChip(w))
-      await items(w)[0].find('.trigger').trigger('click') // 活屍 60s
-      vi.advanceTimersByTime(56_000)
+      await items(w)[0].find('.trigger').trigger('click') // 反盾 80s
+      vi.advanceTimersByTime(76_000)
       await nextTick()
       expect(items(w)[0].find('.seg-remaining').text()).toBe('4s')
       expect(items(w)[0].classes()).toContain('phase-reflect') // 跟反盾面板同一組配色語意
-      // 到點後自動接下一輪，回到 60 秒
+      // 到點後自動接下一輪，回到 80 秒
       vi.advanceTimersByTime(4_000)
       await nextTick()
-      expect(items(w)[0].find('.seg-remaining').text()).toBe('60s')
+      expect(items(w)[0].find('.seg-remaining').text()).toBe('80s')
       expect(items(w)[0].classes()).toContain('phase-attack')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('一波：三個時鐘按齊之前說缺誰，齊了才判斷可不可以', async () => {
+    vi.useFakeTimers()
+    try {
+      const { w } = await mountToolkit()
+      await pickBoss(queenChip(w))
+      const bar = () => w.find('.finisher')
+      expect(bar().classes()).toContain('finisher-unknown')
+      expect(bar().find('.finisher-verdict').text()).toBe('先觸發 變豬、小黑屋、鎖潛能')
+      // 反盾與活屍不在判斷裡，按了也還是沒依據
+      await items(w)[0].find('.trigger').trigger('click') // 反盾
+      await items(w)[4].find('.trigger').trigger('click') // 活屍
+      expect(bar().classes()).toContain('finisher-unknown')
+      // 只按變豬：還缺黑屋與鎖潛能，缺誰就只說誰
+      await items(w)[1].find('.trigger').trigger('click')
+      expect(bar().find('.finisher-verdict').text()).toBe('先觸發 小黑屋、鎖潛能')
+      // 三個按齊：接下來 25 秒乾淨，窗口長到變豬 60 秒後觸發為止
+      await items(w)[2].find('.trigger').trigger('click')
+      await items(w)[3].find('.trigger').trigger('click')
+      expect(bar().classes()).toContain('finisher-go')
+      expect(bar().find('.finisher-verdict').text()).toBe('可以一波（35 秒）')
+      expect(bar().find('.finisher-note').exists()).toBe(false)
+      // 40 秒後變豬剩 20 秒，落在魔消 20＋寬容 5 之內 → 等到變豬觸發
+      vi.advanceTimersByTime(40_000)
+      await nextTick()
+      expect(bar().classes()).toContain('finisher-wait')
+      expect(bar().find('.finisher-verdict').text()).toBe('等 20 秒後可以一波')
+      expect(bar().find('.finisher-note').text()).toBe('（等 變豬 觸發）')
     } finally {
       vi.useRealTimers()
     }
@@ -320,17 +352,17 @@ describe('對齊遊戲計時後顯示的是時間，而且不會一直跳', () =
       const { w } = await mountToolkit()
       await pickBoss(chips(w)[BOSSES.findIndex((b) => b.id === 'cygnus')])
       await align(w, '12:00')
-      await w.findAll('.cycle-item')[0].find('.trigger').trigger('click') // 活屍 60s
+      await w.findAll('.cycle-item')[0].find('.trigger').trigger('click') // 反盾 80s
       await nextTick()
-      expect(w.findAll('.cycle-item')[0].find('.until-time').text()).toBe('11:00')
+      expect(w.findAll('.cycle-item')[0].find('.until-time').text()).toBe('10:40')
       vi.advanceTimersByTime(3_000)
       await nextTick()
-      expect(w.findAll('.cycle-item')[0].find('.until-time').text()).toBe('11:00')
+      expect(w.findAll('.cycle-item')[0].find('.until-time').text()).toBe('10:40')
       // 時間表列出同一個機制接下來的每一輪
       const rows = w.findAll('.events-card .event')
       expect(rows.length).toBeGreaterThan(0)
-      expect(rows[0].find('.ev-time').text()).toBe('11:00')
-      expect(rows[0].find('.ev-label').text()).toBe('活屍')
+      expect(rows[0].find('.ev-time').text()).toBe('10:40')
+      expect(rows[0].find('.ev-label').text()).toBe('反盾')
     } finally {
       vi.useRealTimers()
     }

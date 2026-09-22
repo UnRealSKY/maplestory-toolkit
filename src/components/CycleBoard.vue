@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CycleBoss } from '../boss/bosses'
-import { secondsLeft, cyclesElapsed } from '../boss/cycle'
+import { secondsLeft, cyclesElapsed, finisherWindow } from '../boss/cycle'
 import { cycleClocks, triggerCycle, nudgeCycle, resetCycles, anyCycleRunning } from '../boss/cycleClocks'
 import { ensureAudio } from '../boss/sound'
 import { fmtTime } from '../boss/anchor'
@@ -16,6 +16,31 @@ const clocks = cycleClocks()
 const WARN_SECONDS = 5
 
 const running = computed(() => anyCycleRunning(props.boss.cycles))
+
+// 一波的判斷：現在打下去，魔消段會不會撞到斷輸出的機制
+const win = computed(() =>
+  props.boss.finisher ? finisherWindow(props.boss.cycles, clocks, now.value, props.boss.finisher) : null,
+)
+// 還沒按過觸發、判斷不了的那幾個機制；沒依據時要講清楚缺誰，不然只能乾看
+const finisherMissing = computed(() =>
+  props.boss.finisher
+    ? props.boss.cycles.filter((c) => props.boss.finisher!.blockedBy.includes(c.id) && clocks[c.id] == null)
+    : [],
+)
+const finisherClass = computed(() =>
+  win.value == null ? 'finisher-unknown' : win.value.wait === 0 ? 'finisher-go' : 'finisher-wait',
+)
+const finisherText = computed(() => {
+  const w = win.value
+  if (w == null) return `先觸發 ${finisherMissing.value.map((c) => c.name).join('、')}`
+  return w.wait === 0 ? `可以一波（${w.startWithin} 秒）` : `等 ${w.wait} 秒後可以一波`
+})
+// 等的時候才有第二行：列出還要等哪幾個機制先觸發
+const finisherNote = computed(() => {
+  const w = win.value
+  if (w == null || w.wait === 0) return ''
+  return `等 ${w.waitingFor.join('、')} 觸發`
+})
 
 function onTrigger(id: string) {
   // 用同一個時間戳，倒數才不會在下次更新之前先閃一個大 1 秒的數字
@@ -61,6 +86,11 @@ function progress(id: string, interval: number): number {
       <div class="spacer" />
       <button type="button" class="btn btn-sm" :disabled="!running" @click="resetAll">重置</button>
     </div>
+    <!-- 這條永遠佔位、高度固定：子母畫面高度是釘死的，多一行少一行會把五張卡擠出去 -->
+    <div v-if="boss.finisher" class="finisher" :class="finisherClass">
+      <span class="finisher-verdict">{{ finisherText }}</span>
+      <span v-if="finisherNote" class="finisher-note">（{{ finisherNote }}）</span>
+    </div>
     <ul class="cycle-grid" :style="{ '--cycle-count': boss.cycles.length }">
       <li v-for="c in boss.cycles" :key="c.id" class="card phase-panel cycle-item"
         :class="phaseClass(c.id, c.interval)">
@@ -97,6 +127,17 @@ function progress(id: string, interval: number): number {
 <style scoped>
 .cycle-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .cycle-head .spacer { flex: 1; }
+/* 打王時瞄一眼就要看懂：整列一色、字大。等的時候多一行小字列出在等誰，
+   高度固定、內容置中——一行與兩行都不會改變下面五張卡的位置 */
+.finisher {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 44px; margin-bottom: 8px; border-radius: var(--radius-sm); border: 1px solid transparent;
+}
+.finisher-verdict { font-size: 18px; font-weight: 650; line-height: 1.15; }
+.finisher-note { font-size: 11.5px; font-weight: 600; opacity: .8; line-height: 1.15; }
+.finisher-unknown { background: var(--surface-2); color: var(--text-muted); border-color: var(--border); }
+.finisher-go { background: var(--success-soft); color: var(--success); border-color: var(--success); }
+.finisher-wait { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
 .cycle-grid {
   list-style: none; margin: 0; padding: 0;
   display: grid; gap: 10px;

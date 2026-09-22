@@ -6,6 +6,7 @@
 
 import type { ReflectParams } from './damageReflect'
 import { DEFAULT_MECHANIC } from './mechanics'
+import type { Finisher } from './cycle'
 
 // 反盾模板的王：一組反盾節奏
 export interface ReflectBoss {
@@ -23,6 +24,8 @@ export interface CycleBoss {
   name: string
   mechanic: 'cycle'
   cycles: Array<{ id: string; name: string; interval: number }>
+  /** 有回血機制的王才填：哪幾個機制會在魔消段斷輸出、要看幾秒 */
+  finisher?: Finisher
 }
 
 // 血量門檻模板的王：關鍵不是時間而是血量，掉到門檻就會出招
@@ -53,12 +56,15 @@ export const BOSSES: Boss[] = [
     name: '女皇',
     mechanic: 'cycle',
     cycles: [
-      { id: 'zombie', name: '活屍', interval: 60 },
-      { id: 'seal', name: '鎖潛能', interval: 90 },
-      { id: 'pig', name: '變豬', interval: 60 },
       { id: 'damage-reflect', name: '反盾', interval: 80 },
+      { id: 'pig', name: '變豬', interval: 60 },
       { id: 'jail', name: '小黑屋', interval: 90 },
+      { id: 'seal', name: '鎖潛能', interval: 90 },
+      { id: 'zombie', name: '活屍', interval: 60 },
     ],
+    // 低於 11% 回血到 50%；魔消 20 秒擋回血，這期間變豬、黑屋、鎖潛能會斷輸出；
+    // 反盾放了無效、活屍不影響輸出，所以不列。從亮「可以」到魔消生效留 5 秒反應
+    finisher: { hpPercent: 11, blockedBy: ['pig', 'jail', 'seal'], seconds: 20, slack: 5 },
   },
   {
     id: 'arkarium',
