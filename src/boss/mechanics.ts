@@ -29,7 +29,7 @@ export const MECHANICS: Mechanic[] = [
   // 看的不是時間而是血量，掉到門檻就出招（hp/thresholds.ts）
   { id: 'hp', name: '血量', pip: { width: 347, height: 323 } },
   // 沒有機制要算，只用血條看輸出
-  { id: 'dps', name: 'DPS', pip: { width: 347, height: 132 } },
+  { id: 'dps', name: 'DPS', pip: { width: 347, height: 150 } },
 ]
 
 export const DEFAULT_MECHANIC = MECHANICS[0]
