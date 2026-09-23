@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "天天的楓之谷工具箱 快捷鍵",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "打王時遊戲佔滿螢幕也能用鍵盤按工具箱上的動作，不必切視窗。",
   "background": { "service_worker": "background.js" },
   "host_permissions": [
