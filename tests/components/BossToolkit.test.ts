@@ -231,21 +231,21 @@ describe('BossToolkit 切到循環模板的王（女皇）', () => {
     }
   })
 
-  it('一波：三個時鐘按齊之前說缺誰，齊了才判斷可不可以', async () => {
+  it('一波：三個時鐘按齊之前說在等誰觸發，齊了才判斷可不可以', async () => {
     vi.useFakeTimers()
     try {
       const { w } = await mountToolkit()
       await pickBoss(queenChip(w))
       const bar = () => w.find('.finisher')
       expect(bar().classes()).toContain('finisher-unknown')
-      expect(bar().find('.finisher-verdict').text()).toBe('先觸發 變豬、小黑屋、鎖潛能')
+      expect(bar().find('.finisher-verdict').text()).toBe('等待 變豬、小黑屋、鎖潛能 觸發')
       // 反盾與活屍不在判斷裡，按了也還是沒依據
       await items(w)[0].find('.trigger').trigger('click') // 反盾
       await items(w)[4].find('.trigger').trigger('click') // 活屍
       expect(bar().classes()).toContain('finisher-unknown')
       // 只按變豬：還缺黑屋與鎖潛能，缺誰就只說誰
       await items(w)[1].find('.trigger').trigger('click')
-      expect(bar().find('.finisher-verdict').text()).toBe('先觸發 小黑屋、鎖潛能')
+      expect(bar().find('.finisher-verdict').text()).toBe('等待 小黑屋、鎖潛能 觸發')
       // 三個按齊：接下來 25 秒乾淨，窗口長到變豬 60 秒後觸發為止
       await items(w)[2].find('.trigger').trigger('click')
       await items(w)[3].find('.trigger').trigger('click')

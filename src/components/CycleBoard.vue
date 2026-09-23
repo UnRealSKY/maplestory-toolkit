@@ -33,7 +33,7 @@ const finisherClass = computed(() =>
 )
 const finisherText = computed(() => {
   const w = win.value
-  if (w == null) return `先觸發 ${finisherMissing.value.map((c) => c.name).join('、')}`
+  if (w == null) return `等待 ${finisherMissing.value.map((c) => c.name).join('、')} 觸發`
   return w.wait === 0 ? `可以一波（${w.startWithin} 秒）` : `等 ${w.wait} 秒後可以一波`
 })
 // 等的時候才有第二行：列出還要等哪幾個機制先觸發
