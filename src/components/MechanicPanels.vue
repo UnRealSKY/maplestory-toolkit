@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, provide } from 'vue'
 import type { CycleBoss, HpBoss } from '../boss/bosses'
 import { currentBoss } from '../boss/session'
 import HpCapture from './HpCapture.vue'
@@ -11,6 +11,8 @@ import AnchorRow from './AnchorRow.vue'
 // 這一組面板會同時出現在主視窗與抬頭顯示——兩份各自渲染，讀的是同一份狀態。
 // compact 是抬頭顯示那份：小視窗塞不下的東西在那裡收起來。
 const props = defineProps<{ compact?: boolean }>()
+// 徽章元件靠這個知道自己在哪一份
+provide('pipCompact', props.compact === true)
 
 const boss = computed(() => currentBoss())
 const cycleBoss = computed(() => (boss.value.mechanic === 'cycle' ? (boss.value as CycleBoss) : null))

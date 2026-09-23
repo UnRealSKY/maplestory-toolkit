@@ -23,6 +23,7 @@ import {
 import { now } from '../boss/clock'
 import { ensureAudio } from '../boss/sound'
 import { fmtTime } from '../boss/anchor'
+import SlotBadge from './SlotBadge.vue'
 
 // 反盾面板。狀態機在 boss/session 那一份跑，這裡只負責畫與接操作——
 // 這個面板會同時出現在主視窗與抬頭顯示，推進與音效不能各做一次。
@@ -163,12 +164,12 @@ const nextPhaseInfo = computed(() => {
   <!-- 操作 -->
   <div class="card controls-card">
     <div class="controls">
-      <button type="button" class="btn ctrl ctrl-reflect" @click="startReflect">反盾開始</button>
-      <button type="button" class="btn ctrl ctrl-interval" @click="startInterval">反盾結束</button>
-      <button type="button" class="btn ctrl ctrl-interval" @click="startBlocked">反盾阻止成功</button>
+      <button type="button" class="btn ctrl ctrl-reflect" @click="startReflect">反盾開始<SlotBadge :slot="1" /></button>
+      <button type="button" class="btn ctrl ctrl-interval" @click="startInterval">反盾結束<SlotBadge :slot="2" /></button>
+      <button type="button" class="btn ctrl ctrl-interval" @click="startBlocked">反盾阻止成功<SlotBadge :slot="3" /></button>
       <button type="button" class="btn btn-primary ctrl" :disabled="state.phase !== 'interval'"
-        @click="dispel">魔消成功</button>
-      <button type="button" class="btn btn-ghost ctrl" @click="onResetReflect">重置</button>
+        @click="dispel">魔消成功<SlotBadge :slot="4" /></button>
+      <button type="button" class="btn btn-ghost ctrl" @click="onResetReflect">重置<SlotBadge :slot="5" /></button>
     </div>
     <p class="muted ctrl-hint">
       反盾持續是標準 {{ params.reflectDuration }} 秒；間隔是「最少」{{ params.interval }} 秒，
@@ -182,6 +183,8 @@ const nextPhaseInfo = computed(() => {
 </template>
 
 <style scoped>
+/* 徽章靠按鈕定位 */
+.controls .ctrl { position: relative; }
 .phase-next { margin-top: 12px; font-size: 15.5px; font-weight: 600; }
 .phase-next .next-time {
   font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 750;

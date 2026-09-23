@@ -6,6 +6,7 @@ import { cycleClocks, triggerCycle, nudgeCycle, resetCycles, anyCycleRunning } f
 import { ensureAudio } from '../boss/sound'
 import { fmtTime } from '../boss/anchor'
 import { now, touchNow } from '../boss/clock'
+import SlotBadge from './SlotBadge.vue'
 
 const props = defineProps<{ boss: CycleBoss }>()
 
@@ -84,7 +85,7 @@ function progress(id: string, interval: number): number {
       <!-- 子母畫面把遊戲計時塞在這裡，跟重置共用一列 -->
       <slot name="lead" />
       <div class="spacer" />
-      <button type="button" class="btn btn-sm" :disabled="!running" @click="resetAll">重置</button>
+      <button type="button" class="btn btn-sm" :disabled="!running" @click="resetAll">重置<SlotBadge :slot="boss.cycles.length + 1" /></button>
     </div>
     <!-- 這條永遠佔位、高度固定：子母畫面高度是釘死的，多一行少一行會把五張卡擠出去 -->
     <div v-if="boss.finisher" class="finisher" :class="finisherClass">
@@ -92,7 +93,7 @@ function progress(id: string, interval: number): number {
       <span v-if="finisherNote" class="finisher-note">（{{ finisherNote }}）</span>
     </div>
     <ul class="cycle-grid" :style="{ '--cycle-count': boss.cycles.length }">
-      <li v-for="c in boss.cycles" :key="c.id" class="card phase-panel cycle-item"
+      <li v-for="(c, i) in boss.cycles" :key="c.id" class="card phase-panel cycle-item"
         :class="phaseClass(c.id, c.interval)">
         <!-- 引信：與反盾面板同一套，邊框燒短就是本輪快到了 -->
         <svg v-if="clocks[c.id] != null" class="fuse" aria-hidden="true">
@@ -117,7 +118,7 @@ function progress(id: string, interval: number): number {
         <div class="phase-bar">
           <div class="phase-bar-fill" :style="{ width: progress(c.id, c.interval) + '%' }" />
         </div>
-        <button type="button" class="btn ctrl trigger" @click="onTrigger(c.id)">觸發</button>
+        <button type="button" class="btn ctrl trigger" @click="onTrigger(c.id)">觸發<SlotBadge :slot="i + 1" /></button>
       </li>
     </ul>
 
@@ -125,6 +126,8 @@ function progress(id: string, interval: number): number {
 </template>
 
 <style scoped>
+/* 徽章靠按鈕定位 */
+.trigger, .cycle-head .btn { position: relative; }
 .cycle-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .cycle-head .spacer { flex: 1; }
 /* 打王時瞄一眼就要看懂：整列一色、字大。等的時候多一行小字列出在等誰，

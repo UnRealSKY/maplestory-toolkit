@@ -22,10 +22,20 @@ import { openPipWindow, pipSupported, keepFitted, resizePip } from '../pip/docum
 import MechanicPanels from './MechanicPanels.vue'
 import CycleEvents from './CycleEvents.vue'
 import AnchorRow from './AnchorRow.vue'
+import { startHotkeyBridge, requestOpenShortcuts, bindings, extensionReady } from '../hotkey/bridge'
 
 // 計時推進與音效只有一份（在 boss/session），面板不管開幾份都讀它
 onMounted(startSessionLoop)
 onBeforeUnmount(stopSessionLoop)
+
+// 擴充套件送進來的按鍵與綁定走這條橋。沒裝擴充套件它就只是一個不會收到東西的監聽器
+let stopBridge: (() => void) | undefined
+onMounted(() => (stopBridge = startHotkeyBridge()))
+onBeforeUnmount(() => stopBridge?.())
+// 有裝但有格子沒綁：提示去綁。全綁好了就不再打擾
+const needsSetup = computed(
+  () => extensionReady.value && Object.values(bindings.value).some((k) => !k),
+)
 
 // 王選單列出所有王；選到誰就換成該王機制模板的面板
 const bosses = BOSSES
@@ -163,6 +173,9 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
       </div>
       <span v-if="locked" class="muted lock-hint">計時中無法換王——請先按「重置」</span>
       <div class="spacer" />
+      <button v-if="needsSetup" type="button" class="btn btn-sm hotkey-setup" @click="requestOpenShortcuts">
+        設定快捷鍵
+      </button>
       <button v-if="canPip" type="button" class="btn btn-sm" @click="togglePip">
         {{ pipBody ? '關閉抬頭顯示' : '抬頭顯示（子母畫面）' }}
       </button>
