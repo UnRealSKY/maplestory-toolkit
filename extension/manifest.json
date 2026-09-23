@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "天天的楓之谷工具箱 快捷鍵",
+  "version": "0.1.0",
+  "description": "打王時遊戲佔滿螢幕也能用鍵盤按工具箱上的動作，不必切視窗。",
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://unrealsky.github.io/maplestory-toolkit/*",
+        "http://localhost:5173/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "slot1": { "description": "第 1 格", "global": true },
+    "slot2": { "description": "第 2 格", "global": true },
+    "slot3": { "description": "第 3 格", "global": true },
+    "slot4": { "description": "第 4 格", "global": true },
+    "slot5": { "description": "第 5 格", "global": true },
+    "slot6": { "description": "第 6 格", "global": true }
+  }
+}
