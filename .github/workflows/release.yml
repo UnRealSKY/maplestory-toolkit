@@ -97,6 +97,22 @@ jobs:
           git push origin HEAD:main
           git push origin --tags
 
+      # --- 快捷鍵擴充套件：壓縮檔掛在這一版的 GitHub Release ---
+      # 使用者手動安裝（載入未封裝項目）。Release 的 latest/download 連結永遠指向
+      # 最新版，網站與 README 的下載連結都固定寫那一條，不必每版改。
+      # 放在 tag 推完之後：gh release create 要那個 tag 已經存在。
+      - name: Release extension zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          rm -rf maplestory-toolkit-hotkeys
+          cp -r extension maplestory-toolkit-hotkeys
+          zip -r maplestory-toolkit-hotkeys.zip maplestory-toolkit-hotkeys
+          # 這一版的 CHANGELOG 段落當 Release 說明（跟 Discord 通知用同一個切法）
+          node -e "const fs=require('fs');const c=fs.readFileSync('CHANGELOG.md','utf8');const m=c.match(/##\\s+[^\\n]*\\n([\\s\\S]*?)(?:\\n##\\s|$)/);fs.writeFileSync('/tmp/notes.md',m?m[1].trim():'')"
+          gh release create "$TAG" maplestory-toolkit-hotkeys.zip --title "$TAG" --notes-file /tmp/notes.md
+
       # --- Discord 發版通知（未設 DISCORD_WEBHOOK secret 時自動略過）---
       - name: Discord notify
         env:

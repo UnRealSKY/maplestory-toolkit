@@ -176,6 +176,9 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
       <button v-if="needsSetup" type="button" class="btn btn-sm hotkey-setup" @click="requestOpenShortcuts">
         設定快捷鍵
       </button>
+      <a v-if="!extensionReady" class="btn btn-sm hotkey-install"
+        href="https://github.com/UnRealSKY/maplestory-toolkit/releases/latest/download/maplestory-toolkit-hotkeys.zip"
+        title="下載後解壓縮，到 chrome://extensions 用「載入未封裝項目」選那個資料夾">安裝快捷鍵 ↗</a>
       <button v-if="canPip" type="button" class="btn btn-sm" @click="togglePip">
         {{ pipBody ? '關閉抬頭顯示' : '抬頭顯示（子母畫面）' }}
       </button>
@@ -256,6 +259,8 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
 .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .page-head h2 { margin: 0; font-size: 20px; font-weight: 680; }
 .page-head .spacer { flex: 1; }
+/* 它是連結但長得像按鈕，底線拿掉 */
+.hotkey-install { text-decoration: none; }
 .sound-toggle { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); cursor: pointer; }
 
 .boss-tabs { display: flex; gap: 6px; flex-wrap: wrap; }

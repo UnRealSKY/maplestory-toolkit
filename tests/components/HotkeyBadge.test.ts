@@ -30,19 +30,23 @@ describe('按鈕上的快捷鍵徽章', () => {
     extensionReady.value = false
   })
 
-  it('沒裝擴充套件時一個徽章都不出現', async () => {
+  it('沒裝擴充套件時一個徽章都不出現，標題列只有下載入口', async () => {
     const w = await mountToolkit('pink-bean')
     expect(w.findAll('.slot-badge')).toHaveLength(0)
     expect(w.find('.hotkey-setup').exists()).toBe(false)
+    expect(w.find('.hotkey-install').attributes('href')).toBe(
+      'https://github.com/UnRealSKY/maplestory-toolkit/releases/latest/download/maplestory-toolkit-hotkeys.zip',
+    )
   })
 
-  it('有裝、有綁：徽章顯示綁的鍵', async () => {
+  it('有裝、有綁：徽章顯示綁的鍵，下載入口消失', async () => {
     extensionReady.value = true
     bindings.value = { slot1: 'Alt+1', slot2: 'Alt+2', slot3: '', slot4: '', slot5: '', slot6: '' }
     const w = await mountToolkit('pink-bean')
     const badges = w.findAll('.slot-badge')
     expect(badges[0].text()).toBe('Alt+1')
     expect(badges[1].text()).toBe('Alt+2')
+    expect(w.find('.hotkey-install').exists()).toBe(false)
   })
 
   it('有裝、沒綁：徽章顯示未綁與格號，並出現設定入口', async () => {

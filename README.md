@@ -118,9 +118,12 @@
 
 ### 安裝
 
-1. 下載本專案，`chrome://extensions` → 右上角打開**開發人員模式** → **載入未封裝項目** → 選 `extension/` 資料夾。
-2. 到 `chrome://extensions/shortcuts`，把「第 1 格」到「第 6 格」各綁一個鍵，右邊範圍要選 **全域**（不選全域的話 Chrome 沒焦點時收不到）。
-3. 回到工具箱，按鈕角落就會標出各自的鍵。
+1. 下載 [maplestory-toolkit-hotkeys.zip](https://github.com/UnRealSKY/maplestory-toolkit/releases/latest/download/maplestory-toolkit-hotkeys.zip) 並解壓縮（工具箱標題列的「安裝快捷鍵」連的就是這個檔，永遠是最新版）。
+2. `chrome://extensions` → 右上角打開**開發人員模式** → **載入未封裝項目** → 選解壓出來的 `maplestory-toolkit-hotkeys` 資料夾。
+3. 到 `chrome://extensions/shortcuts`，把「第 1 格」到「第 6 格」各綁一個鍵，右邊範圍要選 **全域**（不選全域的話 Chrome 沒焦點時收不到）。
+4. 回到工具箱，按鈕角落就會標出各自的鍵。
+
+之後有新版：重新下載、解壓到同一個資料夾覆蓋，再到 `chrome://extensions` 按那張卡的**重新載入**。綁好的鍵不會跑掉。
 
 裝好但還沒綁的格子會顯示 `未綁 3` 這種黃色標記，標題列也會出現「設定快捷鍵」直接帶你去設定頁。
 
