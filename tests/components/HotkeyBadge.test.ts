@@ -57,15 +57,23 @@ describe('按鈕上的快捷鍵徽章', () => {
     expect(w.find('.hotkey-setup').text()).toContain('設定快捷鍵')
   })
 
-  it('女皇：五格觸發依序 1～5，重置是第 6 格', async () => {
+  it('設定入口只看這隻王用到的格子——反盾王只用四格，第 5、6 格沒綁不算', async () => {
     extensionReady.value = true
-    bindings.value = { slot1: 'Alt+1', slot2: 'Alt+2', slot3: 'Alt+3', slot4: 'Alt+4', slot5: 'Alt+5', slot6: 'Alt+6' }
+    bindings.value = { slot1: 'Alt+1', slot2: 'Alt+2', slot3: 'Alt+3', slot4: 'Alt+4', slot5: '', slot6: '' }
+    const w = await mountToolkit('pink-bean')
+    expect(w.findAll('.slot-badge')).toHaveLength(4) // 重置沒有徽章
+    expect(w.find('.hotkey-setup').exists()).toBe(false)
+  })
+
+  it('女皇：五格觸發依序 1～5，重置沒有徽章', async () => {
+    extensionReady.value = true
+    bindings.value = { slot1: 'Alt+1', slot2: 'Alt+2', slot3: 'Alt+3', slot4: 'Alt+4', slot5: 'Alt+5', slot6: '' }
     const w = await mountToolkit('cygnus')
     expect(w.findAll('.trigger .slot-badge').map((b) => b.text())).toEqual([
       'Alt+1', 'Alt+2', 'Alt+3', 'Alt+4', 'Alt+5',
     ])
-    // 重置按鈕在五張卡上面那一列，DOM 順序在前，所以單獨驗
-    expect(w.find('.cycle-head .slot-badge').text()).toBe('Alt+6')
+    expect(w.find('.cycle-head .slot-badge').exists()).toBe(false)
+    expect(w.find('.hotkey-setup').exists()).toBe(false) // 第 6 格沒人用，不催人綁
   })
 
   it('血量模板沒有可按的動作，不畫徽章', async () => {

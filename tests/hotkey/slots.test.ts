@@ -10,9 +10,9 @@ describe('slot 對應', () => {
     }
   })
 
-  it('反盾模板：五個動作，第六格空著', () => {
+  it('反盾模板：四個動作，重置不進格子——誤按會把整場計時清掉', () => {
     expect(slotsOf(bossById('pink-bean')).map((s) => s?.label ?? null)).toEqual([
-      '反盾開始', '反盾結束', '反盾阻止成功', '魔消成功', '重置', null,
+      '反盾開始', '反盾結束', '反盾阻止成功', '魔消成功', null, null,
     ])
   })
 
@@ -20,9 +20,9 @@ describe('slot 對應', () => {
     expect(slotsOf(bossById('dunas'))).toEqual(slotsOf(bossById('pink-bean')))
   })
 
-  it('循環模板：跟著 cycles 順序，最後一格是重置', () => {
+  it('循環模板：跟著 cycles 順序，重置不進格子', () => {
     expect(slotsOf(bossById('cygnus')).map((s) => s?.label ?? null)).toEqual([
-      '反盾', '變豬', '小黑屋', '鎖潛能', '活屍', '重置',
+      '反盾', '變豬', '小黑屋', '鎖潛能', '活屍', null,
     ])
   })
 

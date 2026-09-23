@@ -23,6 +23,7 @@ import MechanicPanels from './MechanicPanels.vue'
 import CycleEvents from './CycleEvents.vue'
 import AnchorRow from './AnchorRow.vue'
 import { startHotkeyBridge, requestOpenShortcuts, bindings, extensionReady } from '../hotkey/bridge'
+import { slotsOf } from '../hotkey/slots'
 
 // 計時推進與音效只有一份（在 boss/session），面板不管開幾份都讀它
 onMounted(startSessionLoop)
@@ -32,9 +33,11 @@ onBeforeUnmount(stopSessionLoop)
 let stopBridge: (() => void) | undefined
 onMounted(() => (stopBridge = startHotkeyBridge()))
 onBeforeUnmount(() => stopBridge?.())
-// 有裝但有格子沒綁：提示去綁。全綁好了就不再打擾
+// 有裝但這隻王用到的格子有沒綁的：提示去綁。只看用到的——沒有王在用的格子沒綁不算
 const needsSetup = computed(
-  () => extensionReady.value && Object.values(bindings.value).some((k) => !k),
+  () =>
+    extensionReady.value &&
+    slotsOf(current.value).some((s, i) => s != null && !bindings.value[`slot${i + 1}`]),
 )
 
 // 王選單列出所有王；選到誰就換成該王機制模板的面板

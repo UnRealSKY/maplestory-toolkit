@@ -85,7 +85,7 @@ function progress(id: string, interval: number): number {
       <!-- 子母畫面把遊戲計時塞在這裡，跟重置共用一列 -->
       <slot name="lead" />
       <div class="spacer" />
-      <button type="button" class="btn btn-sm" :disabled="!running" @click="resetAll">重置<SlotBadge :slot="boss.cycles.length + 1" /></button>
+      <button type="button" class="btn btn-sm" :disabled="!running" @click="resetAll">重置</button>
     </div>
     <!-- 這條永遠佔位、高度固定：子母畫面高度是釘死的，多一行少一行會把五張卡擠出去 -->
     <div v-if="boss.finisher" class="finisher" :class="finisherClass">
@@ -127,7 +127,7 @@ function progress(id: string, interval: number): number {
 
 <style scoped>
 /* 徽章靠按鈕定位 */
-.trigger, .cycle-head .btn { position: relative; }
+.trigger { position: relative; }
 .cycle-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .cycle-head .spacer { flex: 1; }
 /* 打王時瞄一眼就要看懂：整列一色、字大。等的時候多一行小字列出在等誰，

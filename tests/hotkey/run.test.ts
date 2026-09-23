@@ -21,15 +21,11 @@ describe('執行 slot', () => {
     expect(reflectState.value.phase).toBe('interval')
   })
 
-  it('反盾王第 5 格＝重置', () => {
+  it('反盾王第 5、6 格是空的——重置不給快捷鍵，按了什麼都不做', () => {
     runSlot(1)
-    expect(runSlot(5)).toBe(true)
-    expect(reflectState.value.phase).toBe('idle')
-  })
-
-  it('反盾王第 6 格是空的，什麼都不做', () => {
+    expect(runSlot(5)).toBe(false)
     expect(runSlot(6)).toBe(false)
-    expect(reflectState.value.phase).toBe('idle')
+    expect(reflectState.value.phase).toBe('reflect') // 沒被重置
   })
 
   it('魔消不在間隔階段時呼叫也不會壞，狀態原樣', () => {
@@ -45,14 +41,14 @@ describe('執行 slot', () => {
     expect(cycleClocks()['jail']).toBeUndefined()
   })
 
-  it('女皇第 6 格＝重置，所有時鐘清空', () => {
+  it('女皇第 6 格是空的，時鐘不會被清掉', () => {
     bossId.value = 'cygnus'
     resetSession()
     runSlot(1)
     runSlot(2)
-    expect(runSlot(6)).toBe(true)
-    expect(cycleClocks()['damage-reflect']).toBeUndefined()
-    expect(cycleClocks()['pig']).toBeUndefined()
+    expect(runSlot(6)).toBe(false)
+    expect(cycleClocks()['damage-reflect']).toBeTypeOf('number')
+    expect(cycleClocks()['pig']).toBeTypeOf('number')
   })
 
   it('編號超出範圍不炸', () => {

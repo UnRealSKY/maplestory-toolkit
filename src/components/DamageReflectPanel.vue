@@ -169,7 +169,7 @@ const nextPhaseInfo = computed(() => {
       <button type="button" class="btn ctrl ctrl-interval" @click="startBlocked">反盾阻止成功<SlotBadge :slot="3" /></button>
       <button type="button" class="btn btn-primary ctrl" :disabled="state.phase !== 'interval'"
         @click="dispel">魔消成功<SlotBadge :slot="4" /></button>
-      <button type="button" class="btn btn-ghost ctrl" @click="onResetReflect">重置<SlotBadge :slot="5" /></button>
+      <button type="button" class="btn btn-ghost ctrl" @click="onResetReflect">重置</button>
     </div>
     <p class="muted ctrl-hint">
       反盾持續是標準 {{ params.reflectDuration }} 秒；間隔是「最少」{{ params.interval }} 秒，
