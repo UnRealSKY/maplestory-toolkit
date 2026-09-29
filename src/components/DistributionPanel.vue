@@ -10,9 +10,12 @@ import {
   roundDisplay,
 } from '../calc/distribution'
 import { displayNameIn, distOptionsFor } from '../store/groups'
+import { splitDropShares } from '../format/dist'
 
 const props = defineProps<{ record: LootRecord }>()
-const emit = defineEmits<{ 'toggle-settle': [index: number] }>()
+const emit = defineEmits<{ 'toggle-settle': [index: number]; 'toggle-drops-settle': [index: number] }>()
+// 有可分的實物才有「物」這件事要標記
+const hasDrops = computed(() => splitDropShares(props.record).length > 0)
 
 const n = computed(() => props.record.members.length)
 const total = computed(() => teamTotal(props.record))
@@ -33,6 +36,7 @@ const rows = computed(() =>
       held,
       settleAmount: Math.ceil(inc.income) - held,
       settle: (props.record.members[i]?.settle ?? 'pending') as SettleStatus,
+      dropsSettle: (props.record.members[i]?.dropsSettle ?? 'pending') as SettleStatus,
       index: i,
     }
   }),
@@ -95,10 +99,14 @@ const rows = computed(() =>
             <td class="num income">{{ r.rounded }}</td>
             <td v-if="hasConsignments" class="num minus">{{ r.held ? '−' + r.held : 0 }}</td>
             <td v-if="hasConsignments" class="num settle">{{ r.settleAmount }}</td>
-            <td>
+            <td class="settle-cell">
               <button type="button" class="chip" :class="r.settle === 'settled' ? 'chip-ok' : 'chip-pending'"
                 @click="emit('toggle-settle', r.index)">
-                {{ r.settle === 'settled' ? '✓ 已結清' : '● 待結清' }}
+                {{ r.settle === 'settled' ? '✓ 錢已領' : '● 待領錢' }}
+              </button>
+              <button v-if="hasDrops" type="button" class="chip" :class="r.dropsSettle === 'settled' ? 'chip-ok' : 'chip-pending'"
+                @click="emit('toggle-drops-settle', r.index)">
+                {{ r.dropsSettle === 'settled' ? '✓ 物已領' : '● 待領物' }}
               </button>
             </td>
           </tr>
@@ -124,4 +132,6 @@ const rows = computed(() =>
 .minus { color: var(--danger); }
 .income { font-weight: 750; font-size: 15px; }
 .settle { font-weight: 750; font-size: 15px; color: var(--primary); }
+.settle-cell { white-space: nowrap; }
+.settle-cell .chip + .chip { margin-left: 6px; }
 </style>

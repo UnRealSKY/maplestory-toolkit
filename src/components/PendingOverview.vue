@@ -27,12 +27,13 @@ async function copy(text: string, key: string) {
   }
 }
 
-function markSettled(recordId: string, handle: string) {
+// 錢與實物各自標記領了；哪一部分領了，那部分就從畫面消失
+function markReceived(recordId: string, handle: string, field: 'settle' | 'dropsSettle') {
   const r = store.get(recordId)
   if (!r) return
   store.upsert({
     ...r,
-    members: r.members.map((m) => (m.handle === handle ? { ...m, settle: 'settled' as const } : m)),
+    members: r.members.map((m) => (m.handle === handle ? { ...m, [field]: 'settled' as const } : m)),
   })
 }
 </script>
@@ -59,8 +60,10 @@ function markSettled(recordId: string, handle: string) {
           <span v-if="i === 0 && rec.hasCart" class="chip chip-cart cart-note" title="金額可能變動">尚有待售</span>
           <a v-if="i === 0" class="btn btn-sm open-btn" :href="editHref(rec.recordId)"
             target="_blank" rel="noopener" title="開新分頁編輯並跳至分配名單">開啟 ↗</a>
-          <button v-if="i === rec.lines.length - 1" type="button" class="chip chip-pending"
-            title="標記此場為已結清" @click="markSettled(rec.recordId, b.handle)">結清</button>
+          <button v-if="i === rec.lines.length - 1 && rec.moneyPending" type="button" class="chip chip-pending"
+            title="這場的錢已經交給他" @click="markReceived(rec.recordId, b.handle, 'settle')">錢已領</button>
+          <button v-if="i === rec.lines.length - 1 && rec.dropsPending" type="button" class="chip chip-pending"
+            title="這場均分的實物已經交給他" @click="markReceived(rec.recordId, b.handle, 'dropsSettle')">掉落物已領</button>
           <button type="button" class="btn btn-sm copy-btn"
             @click="copy(line, `${b.handle}:${rec.recordId}:${i}`)">
             {{ copiedKey === `${b.handle}:${rec.recordId}:${i}` ? '✓' : '複製' }}

@@ -3,7 +3,8 @@ export type LootStatus = 'ok' | 'cart' | 'struck'  // :ok: / :shopping_cart: / �
 
 export interface Member {
   handle: string           // 例 "@.unrealsky"
-  settle: SettleStatus
+  settle: SettleStatus     // 錢領了沒；主文的 :ok: / :orange_square: 與 :dollar:(n) 只看這個
+  dropsSettle?: SettleStatus // 均分的實物領了沒；不進主文，只有未領總覽在看。沒填＝未領
   id?: string
 }
 

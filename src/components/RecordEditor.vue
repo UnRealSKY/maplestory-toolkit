@@ -412,6 +412,11 @@ function toggleSettle(i: number) {
   if (!m) return
   updateMember(i, { settle: m.settle === 'settled' ? 'pending' : 'settled' })
 }
+function toggleDropsSettle(i: number) {
+  const m = record.value?.members[i]
+  if (!m) return
+  updateMember(i, { dropsSettle: m.dropsSettle === 'settled' ? 'pending' : 'settled' })
+}
 </script>
 
 <template>
@@ -542,7 +547,7 @@ function toggleSettle(i: number) {
     <ImageSection title="外購截圖" kind="external" :images="imagesOf('external')"
       @add="addImages" @update="updateImage" @remove="removeImage" @refresh="refreshImageUrl" />
     <div ref="distEl" class="dist-anchor">
-      <DistributionPanel :record="record" @toggle-settle="toggleSettle" />
+      <DistributionPanel :record="record" @toggle-settle="toggleSettle" @toggle-drops-settle="toggleDropsSettle" />
     </div>
 
     <ImportDialog :open="showImport" @close="showImport = false" @imported="applyImport" />

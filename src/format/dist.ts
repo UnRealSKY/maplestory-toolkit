@@ -111,9 +111,14 @@ export function splitDropShares(record: LootRecord): DropShare[] {
   return out
 }
 
+// 份數清單本身，例如「星星碎片x2、魔法石x1」
+export function dropsList(shares: DropShare[]): string {
+  return shares.map((s) => `${s.name}x${s.each}`).join('、')
+}
+
 // 份數清單排成字尾，例如「 ｜ 星星碎片x2、魔法石x1」；空清單就是空字串
 export function dropsSuffix(shares: DropShare[]): string {
-  return shares.length ? ` ｜ ${shares.map((s) => `${s.name}x${s.each}`).join('、')}` : ''
+  return shares.length ? ` ｜ ${dropsList(shares)}` : ''
 }
 
 // 每人那行後面的掉落物均分字尾。serialize 與未領總覽共用同一份，複製進遊戲的那行才跟主文對得上
