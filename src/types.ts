@@ -45,6 +45,14 @@ export interface Consignment {
   id?: string
 }
 
+// 掉落物均分：實物平分給每個人，不是錢——不進任何金額計算。
+// 總數除不盡人數時擋住發佈，讓人先在 DC 商量完再改數字。
+export interface SplitDrop {
+  name: string
+  qty: number              // 總數
+  id?: string
+}
+
 export type DcImageKind = 'drop' | 'sale' | 'payout' | 'external'
 // drop：掉落截圖（主貼附件）；sale：物品出售（串內一則，全部圖共用）；
 // payout：領錢截圖（串內訊息、綁團員）；external：外購截圖（串內訊息、可註解）
@@ -93,6 +101,7 @@ export interface LootRecord {
   purchases: Purchase[]
   streams?: Stream[]        // 直播檔連結
   consignments?: Consignment[] // 代售：某團員代賣、手上握著的金額，併入結算
+  splitDrops?: SplitDrop[]     // 掉落物均分：實物平分，不進金額
   shelved?: boolean         // 擱置：暫不列入未領總覽
   dc?: DcBinding            // 已發佈至 DC 論壇串的綁定
   images?: DcImage[]        // 三類截圖（檔案本體在 IndexedDB 或 DC CDN）

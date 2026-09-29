@@ -1,5 +1,5 @@
 import type { LootRecord } from '../types'
-import { memberDists, summaryLine, distLine } from './dist'
+import { memberDists, summaryLine, distLine, splitDropSuffix } from './dist'
 import type { DistOptions } from '../calc/distribution'
 
 export interface PendingRecordDetail {
@@ -49,7 +49,8 @@ export function pendingBlocks(
         lines.push(`${display(p.buyer, r.groupId)}: 內購 ${p.name}x${p.qty} = ${p.unitPrice}x${p.qty}${mode}`)
       }
       lines.push(summaryLine(r, optionsFor?.(r.groupId)))
-      lines.push(`${display(handle, r.groupId)}: ${distLine(d)}`)
+      // 均分字尾跟主文同一份，複製進遊戲的那行才對得上
+      lines.push(`${display(handle, r.groupId)}: ${distLine(d)}${splitDropSuffix(r)}`)
       let block = blocks.get(handle)
       if (!block) {
         block = { handle, display: display(handle, r.groupId), records: [], totalLine: '', total: 0 }

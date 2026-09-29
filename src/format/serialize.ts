@@ -1,5 +1,6 @@
 import type { LootRecord, LootItem, SettleStatus } from '../types'
-import { memberDists, summaryLine, distLine } from './dist'
+import { memberDists, summaryLine, distLine, splitDropSuffix } from './dist'
+import { perMember } from '../calc/splitDrops'
 import type { DistOptions } from '../calc/distribution'
 
 function lootLine(it: LootItem): string {
@@ -70,11 +71,23 @@ export function serialize(record: LootRecord, opts?: DistOptions): string {
     }
   }
 
+  const splitDrops = record.splitDrops ?? []
+  if (splitDrops.length) {
+    lines.push('', '## 掉落物均分區')
+    const n = record.members.length
+    for (const d of splitDrops) {
+      // 除不盡的標出來；發佈會被擋，但「複製回 DC」不擋，複製出去也要看得到問題在哪
+      const note = perMember(d.qty, n) == null ? `（無法均分 ${n} 人）` : ''
+      lines.push(`* ${d.name}x${d.qty}${note}`)
+    }
+  }
+
   lines.push('', '## 分配')
   lines.push(summaryLine(record, opts))
 
+  const suffix = splitDropSuffix(record)
   for (const d of memberDists(record, opts)) {
-    lines.push(`* ${settleEmoji(d.member.settle)} ${d.member.handle}: ${distLine(d)}`)
+    lines.push(`* ${settleEmoji(d.member.settle)} ${d.member.handle}: ${distLine(d)}${suffix}`)
   }
 
   return lines.join('\n')

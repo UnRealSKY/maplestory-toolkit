@@ -10,6 +10,7 @@ import {
   type OutFile,
 } from './webhook'
 import { getBlob, deleteBlob } from '../db/imageBlobs'
+import { undividable } from '../calc/splitDrops'
 
 export const CONTENT_LIMIT = 2000 // Discord 訊息內文上限
 // Discord 每則訊息最多 10 個附件。只有「多張共用一則」的兩區受限——
@@ -115,6 +116,12 @@ export async function publishOrSync(
   const content = publishContent(record)
   if (content.length > CONTENT_LIMIT) {
     throw new Error(`內文 ${content.length} 字元，超過 Discord 上限 ${CONTENT_LIMIT}，請精簡後再發佈`)
+  }
+  // 掉落物除不盡不能發：發出去每個人拿幾個是錯的。先在 DC 商量完再改數字
+  const bad = undividable(record)
+  if (bad.length) {
+    const n = record.members.length
+    throw new Error(bad.map((d) => `${d.name} ${d.qty} 個無法均分 ${n} 人`).join('；'))
   }
   // 先擋下來，不要送出請求才失敗（待刪的不算）
   for (const { kind, label } of MULTI_IMAGE_SECTIONS) {

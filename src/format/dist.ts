@@ -1,4 +1,5 @@
 import type { LootRecord, Member } from '../types'
+import { perMember } from '../calc/splitDrops'
 import {
   teamTotal,
   leaderFee,
@@ -81,4 +82,17 @@ export function summaryLine(record: LootRecord, opts?: DistOptions): string {
 // 每人分配行的算式部分：沒有運算時算式本身就是答案，不再重複寫一次
 export function distLine(d: MemberDist): string {
   return d.expr === String(d.amount) ? d.expr : `${d.expr} = ${d.amount}`
+}
+
+// 每人那行後面的掉落物均分字尾，例如「 ｜ 星星碎片x2、魔法石x1」；沒有就是空字串。
+// 除不盡的項目略過——它們在區塊那邊已經標了無法均分，發佈也會被擋。
+// serialize 與未領總覽共用同一份，複製進遊戲的那行才跟主文對得上。
+export function splitDropSuffix(record: LootRecord): string {
+  const n = record.members.length
+  const parts: string[] = []
+  for (const d of record.splitDrops ?? []) {
+    const each = perMember(d.qty, n)
+    if (each != null) parts.push(`${d.name}x${each}`)
+  }
+  return parts.length ? ` ｜ ${parts.join('、')}` : ''
 }

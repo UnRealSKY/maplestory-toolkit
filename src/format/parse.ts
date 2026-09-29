@@ -1,6 +1,8 @@
 import type { LootRecord, LootItem, LootStatus, Stream, Consignment, SettleStatus } from '../types'
 
-type Section = 'loot' | 'purchase' | 'stream' | 'consignment' | 'dist' | 'none'
+type Section = 'loot' | 'purchase' | 'stream' | 'consignment' | 'splitDrop' | 'dist' | 'none'
+// 均分行：* 品名xN，後面可能跟著「（無法均分 N 人）」的註記；品名裡可能有 x，取最後一個 xN
+const SPLIT_DROP_RE = /^\*\s*(.+)x(\d+)\s*(?:（[^）]*）)?\s*$/
 
 // 標頭：日期 團名［/ 人數（舊格式，僅供辨識）］［｜ 狀態尾綴（相容 ｜/|/・）］
 const HEADER_RE = /^##\s+(\S+)\s+(.+?)(?:\s*\/\s*(\d+))?\s*(?:[｜|・].*)?$/
@@ -113,6 +115,7 @@ export function parse(md: string): LootRecord {
     if (/^##\s*內購區/.test(line)) { section = 'purchase'; continue }
     if (/^##\s*直播檔/.test(line)) { section = 'stream'; continue }
     if (/^##\s*代售/.test(line)) { section = 'consignment'; continue }
+    if (/^##\s*掉落物均分/.test(line)) { section = 'splitDrop'; continue }
     if (/^##\s*分配/.test(line)) { section = 'dist'; continue }
 
     if (section === 'loot') {
@@ -150,6 +153,9 @@ export function parse(md: string): LootRecord {
         }
         consignments.push(entry)
       }
+    } else if (section === 'splitDrop') {
+      const m = line.match(SPLIT_DROP_RE)
+      if (m) (record.splitDrops ??= []).push({ name: m[1].trim(), qty: Number(m[2]) })
     } else if (section === 'dist') {
       const totalLine = line.match(DIST_TOTAL_RE)
       if (totalLine) {
