@@ -4,28 +4,46 @@ import type { LootRecord } from '#src/types'
 
 const display = (h: string) => h
 
-describe('未領總覽的均分字尾', () => {
+describe('未領總覽的均分物品', () => {
   const r: LootRecord = {
-    id: 'r1', date: '2026-09-29', boss: '女皇',
+    id: 'r1', date: '2026-09-29', boss: '雙混',
     members: [
       { handle: '@a', settle: 'pending' },
       { handle: '@b', settle: 'settled' },
+      { handle: '@c', settle: 'settled' },
     ],
-    lootItems: [{ status: 'ok', name: '道具', qty: 1, unitPrice: 2000 }],
+    lootItems: [{ status: 'ok', name: '道具', qty: 1, unitPrice: 4614 }],
     purchases: [],
-    splitDrops: [{ name: '星星碎片', qty: 8 }, { name: '魔法石', qty: 3 }],
+    splitDrops: [
+      { name: '大師附加', qty: 3 },
+      { name: '附加奇幻', qty: 3 },
+      { name: '可疑附加', qty: 9 },
+      { name: '除不盡', qty: 4 },
+    ],
     createdAt: '', updatedAt: '',
   }
 
-  it('每人那行帶｜字尾，除不盡的略過——跟主文同一個格式，複製進遊戲才對得上', () => {
-    const blocks = pendingBlocks([r], display)
-    const lines = blocks[0].records[0].lines
-    expect(lines[lines.length - 1]).toBe('@a: 1000 ｜ 星星碎片x4')
+  it('物品放在總共那行、拿掉「/ 人數 = 每人」；那個人自己那行只剩金額', () => {
+    const lines = pendingBlocks([r], display)[0].records[0].lines
+    expect(lines).toEqual([
+      '2026-09-29 雙混',
+      '總共: 4614 ｜ 大師附加x1、附加奇幻x1、可疑附加x3',
+      '@a: 1538',
+    ])
   })
 
-  it('沒有均分項目時那行跟以前一樣', () => {
-    const blocks = pendingBlocks([{ ...r, splitDrops: undefined }], display)
-    const lines = blocks[0].records[0].lines
-    expect(lines[lines.length - 1]).toBe('@a: 1000')
+  it('有手續費時算式留著，只拿掉除法', () => {
+    const lines = pendingBlocks([{ ...r, serviceFeePercent: 3 }], display)[0].records[0].lines
+    expect(lines[1]).toBe('總共: 4614 * (1 - 3%[手續費]) ｜ 大師附加x1、附加奇幻x1、可疑附加x3')
+  })
+
+  it('沒有均分項目時整段跟以前一樣', () => {
+    const lines = pendingBlocks([{ ...r, splitDrops: undefined }], display)[0].records[0].lines
+    expect(lines).toEqual(['2026-09-29 雙混', '總共: 4614 / 3 = 1538', '@a: 1538'])
+  })
+
+  it('全部除不盡等於沒有可分的：格式維持原樣', () => {
+    const lines = pendingBlocks([{ ...r, splitDrops: [{ name: '除不盡', qty: 4 }] }], display)[0].records[0].lines
+    expect(lines[1]).toBe('總共: 4614 / 3 = 1538')
   })
 })

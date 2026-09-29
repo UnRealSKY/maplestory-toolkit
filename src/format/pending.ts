@@ -1,5 +1,5 @@
 import type { LootRecord } from '../types'
-import { memberDists, summaryLine, distLine, splitDropSuffix } from './dist'
+import { memberDists, summaryLine, summaryExpr, distLine, splitDropSuffix } from './dist'
 import type { DistOptions } from '../calc/distribution'
 
 export interface PendingRecordDetail {
@@ -48,9 +48,11 @@ export function pendingBlocks(
         const mode = p.mode === 'split' ? ' (均攤)' : ''
         lines.push(`${display(p.buyer, r.groupId)}: 內購 ${p.name}x${p.qty} = ${p.unitPrice}x${p.qty}${mode}`)
       }
-      lines.push(summaryLine(r, optionsFor?.(r.groupId)))
-      // 均分字尾跟主文同一份，複製進遊戲的那行才對得上
-      lines.push(`${display(handle, r.groupId)}: ${distLine(d)}${splitDropSuffix(r)}`)
+      // 有可分的實物時，物品放總共那行、拿掉「/ 人數 = 每人」——每人金額在下一行本來就有
+      const drops = splitDropSuffix(r)
+      const opts = optionsFor?.(r.groupId)
+      lines.push(drops ? `總共: ${summaryExpr(r, opts)}${drops}` : summaryLine(r, opts))
+      lines.push(`${display(handle, r.groupId)}: ${distLine(d)}`)
       let block = blocks.get(handle)
       if (!block) {
         block = { handle, display: display(handle, r.groupId), records: [], totalLine: '', total: 0 }

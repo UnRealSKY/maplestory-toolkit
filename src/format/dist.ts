@@ -61,7 +61,14 @@ export function memberDists(record: LootRecord, opts?: DistOptions): MemberDist[
 // 註記用方括號，跟運算用的圓括號分開。
 // 固定金額的辛苦費沒辦法放進乘法括號，改放外面減——數學上等價，順序也仍然正確。
 export function summaryLine(record: LootRecord, opts?: DistOptions): string {
-  const { total, service, fee, n, base } = distSummary(record, opts)
+  const { n, base } = distSummary(record, opts)
+  return `總共: ${summaryExpr(record, opts)} / ${n} = ${base}`
+}
+
+// 「總共」那行除法之前的算式：總額與扣除項。未領總覽有均分物品時只要這一段，
+// 後面接物品清單而不是「/ 人數 = 每人」——每人金額在那個人自己那行
+export function summaryExpr(record: LootRecord, opts?: DistOptions): string {
+  const { total, service, fee } = distSummary(record, opts)
   const asPct = (amount: number) => roundDisplay(total > 0 ? (amount / total) * 100 : 0)
 
   const percentTerms: string[] = []
@@ -76,7 +83,7 @@ export function summaryLine(record: LootRecord, opts?: DistOptions): string {
   let expr = `${total}`
   if (percentTerms.length) expr = `${total} * (1 - ${percentTerms.join(' - ')})`
   if (flat) expr = `(${expr} - ${flat})`
-  return `總共: ${expr} / ${n} = ${base}`
+  return expr
 }
 
 // 每人分配行的算式部分：沒有運算時算式本身就是答案，不再重複寫一次
