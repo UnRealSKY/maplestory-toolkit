@@ -18,6 +18,7 @@ export interface PendingBlock {
   records: PendingRecordDetail[]
   totalLine: string // 「總計: 總和 ｜ 實物同名相加」；沒有實物就只有金額
   total: number
+  drops: DropShare[] // 這個人還沒領的實物，同名相加
 }
 
 // 日期舊→新（空日期最後），同日期依團名
@@ -66,7 +67,7 @@ export function pendingBlocks(
       }
       let block = blocks.get(handle)
       if (!block) {
-        block = { handle, display: display(handle, r.groupId), records: [], totalLine: '', total: 0 }
+        block = { handle, display: display(handle, r.groupId), records: [], totalLine: '', total: 0, drops: [] }
         blocks.set(handle, block)
         dropTotals.set(handle, new Map())
       }
@@ -79,10 +80,27 @@ export function pendingBlocks(
   }
   for (const b of blocks.values()) {
     b.total = b.records.reduce((s, x) => s + x.amount, 0)
-    const summed: DropShare[] = [...dropTotals.get(b.handle)!].map(([name, each]) => ({ name, each }))
+    b.drops = [...dropTotals.get(b.handle)!].map(([name, each]) => ({ name, each }))
     // 錢全領完只剩實物時，「總計: 0 ｜ …」會誤導，直接列實物
     const anyMoney = b.records.some((x) => x.moneyPending)
-    b.totalLine = anyMoney ? `總計: ${b.total}${dropsSuffix(summed)}` : `總計: ${dropsList(summed)}`
+    b.totalLine = totalLineOf(b.total, b.drops, anyMoney)
   }
   return [...blocks.values()]
+}
+
+function totalLineOf(total: number, drops: DropShare[], anyMoney: boolean): string {
+  return anyMoney || !drops.length ? `總計: ${total}${dropsSuffix(drops)}` : `總計: ${dropsList(drops)}`
+}
+
+export interface PendingGrandTotal {
+  total: number // 所有人還沒領的錢加總
+  drops: DropShare[] // 所有人還沒領的實物，同名相加
+}
+
+// 頁面最上方那張卡：給發錢的人看「還欠大家多少」
+export function pendingGrandTotal(blocks: PendingBlock[]): PendingGrandTotal {
+  const total = blocks.reduce((s, b) => s + b.total, 0)
+  const map = new Map<string, number>()
+  for (const b of blocks) for (const d of b.drops) map.set(d.name, (map.get(d.name) ?? 0) + d.each)
+  return { total, drops: [...map].map(([name, each]) => ({ name, each })) }
 }

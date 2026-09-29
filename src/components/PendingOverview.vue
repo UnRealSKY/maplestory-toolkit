@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRecordsStore } from '../store/records'
 import { displayNameIn, distOptionsFor } from '../store/groups'
-import { pendingBlocks } from '../format/pending'
+import { pendingBlocks, pendingGrandTotal } from '../format/pending'
 
 const store = useRecordsStore()
 const router = useRouter()
@@ -13,6 +13,8 @@ function editHref(recordId: string): string {
   return router.resolve({ path: `/loot/edit/${recordId}`, query: { focus: 'dist' } }).href
 }
 const blocks = computed(() => pendingBlocks(store.records, (handle, groupId) => displayNameIn(groupId, handle), distOptionsFor))
+// 最上方一行：所有人加起來還欠多少錢、多少實物
+const grand = computed(() => pendingGrandTotal(blocks.value))
 
 const copiedKey = ref('')
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
@@ -45,6 +47,15 @@ function markReceived(recordId: string, handle: string, field: 'settle' | 'drops
     </div>
 
     <div v-if="!blocks.length" class="empty">目前沒有未結清款項。</div>
+
+    <!-- 給發錢的人看：還欠大家多少錢、多少東西 -->
+    <div v-else class="card grand-card">
+      <div class="section-head"><h3>總共未領未付</h3></div>
+      <dl class="grand-list">
+        <template v-if="grand.total > 0"><dt>金額</dt><dd>{{ grand.total }}</dd></template>
+        <template v-for="d in grand.drops" :key="d.name"><dt>{{ d.name }}</dt><dd>x{{ d.each }}</dd></template>
+      </dl>
+    </div>
 
     <div v-for="b in blocks" :key="b.handle" class="card">
       <div class="section-head">
@@ -95,6 +106,9 @@ function markReceived(recordId: string, handle: string, field: 'settle' | 'drops
   background: var(--surface-2); padding: 6px 10px; border-radius: 6px;
 }
 .copy-btn { flex: none; min-width: 58px; }
+.grand-list { display: grid; grid-template-columns: max-content auto; gap: 4px 18px; margin: 0; }
+.grand-list dt { color: var(--text-muted); }
+.grand-list dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .open-btn { flex: none; text-decoration: none; }
 .cart-note { cursor: default; }
 .total-line { padding-top: 10px; }
