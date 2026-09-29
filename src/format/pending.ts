@@ -1,19 +1,19 @@
 import type { LootRecord } from '../types'
-import { memberDists, summaryLine, summaryExpr, distLine, splitDropSuffix } from './dist'
+import { memberDists, distSummary, summaryMath, distLine, splitDropShares, dropsSuffix, type DropShare } from './dist'
 import type { DistOptions } from '../calc/distribution'
 
 export interface PendingRecordDetail {
   recordId: string
   hasCart: boolean // 尚有待售項目，金額可能變動
   amount: number
-  lines: string[] // 依序：標題行、他人內購行*、總共行、公式行
+  lines: string[] // 依序：標題行、金額行（總額 / 人數 = 每人 ｜ 均分實物）、有調整項時多一行本人算式
 }
 
 export interface PendingBlock {
   handle: string
   display: string
   records: PendingRecordDetail[]
-  totalLine: string // 「應領: a + b = 總和」；單場為「應領: 總和」
+  totalLine: string // 「總計: 總和 ｜ 實物同名相加」；沒有實物就只有金額
   total: number
 }
 
@@ -36,35 +36,37 @@ export function pendingBlocks(
   optionsFor?: (groupId?: string) => DistOptions,
 ): PendingBlock[] {
   const blocks = new Map<string, PendingBlock>()
+  // 每個人跨場次的實物加總，同名相加、依第一次出現的順序
+  const dropTotals = new Map<string, Map<string, number>>()
   for (const r of [...records].sort(byDateAsc)) {
     if (r.shelved) continue // 擱置中：暫不列入統計
     const hasCart = r.lootItems.some((it) => it.status === 'cart')
-    for (const d of memberDists(r, optionsFor?.(r.groupId))) {
+    const opts = optionsFor?.(r.groupId)
+    const shares = splitDropShares(r)
+    const { base } = distSummary(r, opts)
+    for (const d of memberDists(r, opts)) {
       if (d.member.settle !== 'pending') continue
       const handle = d.member.handle
       const lines: string[] = [[r.date, r.boss].filter(Boolean).join(' ')]
-      for (const p of r.purchases) {
-        if (p.buyer === handle) continue
-        const mode = p.mode === 'split' ? ' (均攤)' : ''
-        lines.push(`${display(p.buyer, r.groupId)}: 內購 ${p.name}x${p.qty} = ${p.unitPrice}x${p.qty}${mode}`)
-      }
-      // 有可分的實物時，物品放總共那行、拿掉「/ 人數 = 每人」——每人金額在下一行本來就有
-      const drops = splitDropSuffix(r)
-      const opts = optionsFor?.(r.groupId)
-      lines.push(drops ? `總共: ${summaryExpr(r, opts)}${drops}` : summaryLine(r, opts))
-      lines.push(`${display(handle, r.groupId)}: ${distLine(d)}`)
+      // 金額行：總額 / 人數 = 每人，後面接這個人分到的實物
+      lines.push(`${summaryMath(r, opts)}${dropsSuffix(shares)}`)
+      // 有內購、代售或辛苦費時這個人實拿的跟每人均分額不同，另起一行寫他的算式
+      if (d.expr !== String(base)) lines.push(`${display(handle, r.groupId)}: ${distLine(d)}`)
       let block = blocks.get(handle)
       if (!block) {
         block = { handle, display: display(handle, r.groupId), records: [], totalLine: '', total: 0 }
         blocks.set(handle, block)
+        dropTotals.set(handle, new Map())
       }
       block.records.push({ recordId: r.id, hasCart, amount: d.amount, lines })
+      const totals = dropTotals.get(handle)!
+      for (const s of shares) totals.set(s.name, (totals.get(s.name) ?? 0) + s.each)
     }
   }
   for (const b of blocks.values()) {
-    const amounts = b.records.map((x) => x.amount)
-    b.total = amounts.reduce((s, v) => s + v, 0)
-    b.totalLine = amounts.length > 1 ? `應領: ${amounts.join(' + ')} = ${b.total}` : `應領: ${b.total}`
+    b.total = b.records.reduce((s, x) => s + x.amount, 0)
+    const summed: DropShare[] = [...dropTotals.get(b.handle)!].map(([name, each]) => ({ name, each }))
+    b.totalLine = `總計: ${b.total}${dropsSuffix(summed)}`
   }
   return [...blocks.values()]
 }

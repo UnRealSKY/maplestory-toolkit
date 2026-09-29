@@ -61,13 +61,17 @@ export function memberDists(record: LootRecord, opts?: DistOptions): MemberDist[
 // 註記用方括號，跟運算用的圓括號分開。
 // 固定金額的辛苦費沒辦法放進乘法括號，改放外面減——數學上等價，順序也仍然正確。
 export function summaryLine(record: LootRecord, opts?: DistOptions): string {
-  const { n, base } = distSummary(record, opts)
-  return `總共: ${summaryExpr(record, opts)} / ${n} = ${base}`
+  return `總共: ${summaryMath(record, opts)}`
 }
 
-// 「總共」那行除法之前的算式：總額與扣除項。未領總覽有均分物品時只要這一段，
-// 後面接物品清單而不是「/ 人數 = 每人」——每人金額在那個人自己那行
-export function summaryExpr(record: LootRecord, opts?: DistOptions): string {
+// 「總共」那行冒號後面的算式：總額（與扣除項）/ 人數 = 每人。未領總覽的金額行直接用它，不帶「總共:」
+export function summaryMath(record: LootRecord, opts?: DistOptions): string {
+  const { n, base } = distSummary(record, opts)
+  return `${summaryExpr(record, opts)} / ${n} = ${base}`
+}
+
+// 除法之前的算式：總額與扣除項
+function summaryExpr(record: LootRecord, opts?: DistOptions): string {
   const { total, service, fee } = distSummary(record, opts)
   const asPct = (amount: number) => roundDisplay(total > 0 ? (amount / total) * 100 : 0)
 
@@ -91,15 +95,28 @@ export function distLine(d: MemberDist): string {
   return d.expr === String(d.amount) ? d.expr : `${d.expr} = ${d.amount}`
 }
 
-// 每人那行後面的掉落物均分字尾，例如「 ｜ 星星碎片x2、魔法石x1」；沒有就是空字串。
-// 除不盡的項目略過——它們在區塊那邊已經標了無法均分，發佈也會被擋。
-// serialize 與未領總覽共用同一份，複製進遊戲的那行才跟主文對得上。
-export function splitDropSuffix(record: LootRecord): string {
+export interface DropShare {
+  name: string
+  each: number // 每人幾個
+}
+
+// 這筆紀錄每人分到的實物。除不盡的項目略過——它們在區塊那邊已經標了無法均分，發佈也會被擋
+export function splitDropShares(record: LootRecord): DropShare[] {
   const n = record.members.length
-  const parts: string[] = []
+  const out: DropShare[] = []
   for (const d of record.splitDrops ?? []) {
     const each = perMember(d.qty, n)
-    if (each != null) parts.push(`${d.name}x${each}`)
+    if (each != null) out.push({ name: d.name, each })
   }
-  return parts.length ? ` ｜ ${parts.join('、')}` : ''
+  return out
+}
+
+// 份數清單排成字尾，例如「 ｜ 星星碎片x2、魔法石x1」；空清單就是空字串
+export function dropsSuffix(shares: DropShare[]): string {
+  return shares.length ? ` ｜ ${shares.map((s) => `${s.name}x${s.each}`).join('、')}` : ''
+}
+
+// 每人那行後面的掉落物均分字尾。serialize 與未領總覽共用同一份，複製進遊戲的那行才跟主文對得上
+export function splitDropSuffix(record: LootRecord): string {
+  return dropsSuffix(splitDropShares(record))
 }

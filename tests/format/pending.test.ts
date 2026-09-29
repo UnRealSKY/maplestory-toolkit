@@ -59,27 +59,24 @@ describe('pendingBlocks', () => {
     expect(blocks.map((b) => b.handle)).toEqual(['@awai0774'])
   })
 
-  it('逐行內容符合範例格式（標題、他人內購、總共、公式）', () => {
+  it('逐行內容：標題、「總額 / 人數 = 每人」，有他人內購時多一行本人算式', () => {
     const [b] = blocks
     expect(b.display).toBe('阿歪')
     expect(b.records[0].lines).toEqual([
       '2026-08-02 混龍第一場',
-      '蘇察哈爾燦: 內購 混龍鍊x1 = 500x1',
-      '咕嘎幻影: 內購 混龍鍊x1 = 500x1',
-      '總共: 4566 / 6 = 761',
+      '4566 / 6 = 761',
       '阿歪: 761 + 1000/5 = 961',
     ])
     expect(b.records[1].lines).toEqual([
       '2026-08-02 混龍第二場',
-      '天天(UnRealSKY): 內購 白衣5%x1 = 200x1',
-      '總共: 1259 / 5 = 252',
+      '1259 / 5 = 252',
       '阿歪: 252 + 200/4 = 302',
     ])
   })
 
-  it('同日期依團名排序（第一場在前）且應領加總', () => {
+  it('同日期依團名排序（第一場在前）且總計加總', () => {
     const [b] = blocks
-    expect(b.totalLine).toBe('應領: 961 + 302 = 1263')
+    expect(b.totalLine).toBe('總計: 1263')
     expect(b.total).toBe(1263)
   })
 
@@ -89,9 +86,9 @@ describe('pendingBlocks', () => {
     expect(b.records[1].hasCart).toBe(true)
   })
 
-  it('單場時應領行不含加式', () => {
+  it('單場時總計就是那一場的金額', () => {
     const [b] = pendingBlocks([r1], display)
-    expect(b.totalLine).toBe('應領: 961')
+    expect(b.totalLine).toBe('總計: 961')
   })
 
   it('本人的內購不列行、只入公式減項', () => {
@@ -107,7 +104,7 @@ describe('pendingBlocks', () => {
     const [b] = pendingBlocks([r], display)
     expect(b.records[0].lines).toEqual([
       '2026-08-02 測',
-      '總共: 1000 / 2 = 500',
+      '1000 / 2 = 500',
       '阿歪: 500 - 300 = 200',
     ])
   })
@@ -137,10 +134,10 @@ describe('pendingBlocks 團長辛苦費', () => {
     leader: { handle: '@a', feeMode: 'percent', feeValue: 5 },
   })
 
-  it('總共行與 serialize 共用，百分比寫在算式裡', () => {
+  it('金額行與 serialize 的總共行共用算式，百分比寫在算式裡', () => {
     const blocks = pendingBlocks([r], display)
     const lines = blocks.find((b) => b.handle === '@a')!.records[0].lines
-    expect(lines).toContain('總共: 10000 * (1 - 5%[辛苦費]) / 5 = 1900')
+    expect(lines).toContain('10000 * (1 - 5%[辛苦費]) / 5 = 1900')
   })
 
   it('團長的應領含辛苦費', () => {
@@ -149,8 +146,8 @@ describe('pendingBlocks 團長辛苦費', () => {
     expect(blocks.find((b) => b.handle === '@b')!.total).toBe(1900)
   })
 
-  it('沒有運算的分配行不再重複寫金額', () => {
+  it('沒有調整項的人不多寫一行自己的算式', () => {
     const lines = pendingBlocks([r], display).find((b) => b.handle === '@b')!.records[0].lines
-    expect(lines).toContain('@b: 1900')
+    expect(lines).toEqual(['2026-08-02 測王', '10000 * (1 - 5%[辛苦費]) / 5 = 1900'])
   })
 })
