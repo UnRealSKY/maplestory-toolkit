@@ -6,7 +6,8 @@ import { useHistory } from '../store/history'
 import { aliasOfIn, groupOf, useGroups, leaderFeeEnabled } from '../store/groups'
 import { publishOrSync, publishContent, hasImageChanges, dcSyncStatus, ATTACHMENT_LIMIT } from '../dc/publish'
 import { parseMessageLink, isBindingLost, getMessage } from '../dc/webhook'
-import type { LootRecord, LootItem, Member, Purchase, Stream, Consignment, DcImage, DcImageKind } from '../types'
+import type { LootRecord, LootItem, Member, Purchase, Stream, Consignment, SplitDrop, DcImage, DcImageKind } from '../types'
+import { undividable } from '../calc/splitDrops'
 import { filesToImages, hoveredImageKind } from '../images'
 import ImageSection from './ImageSection.vue'
 import LootTable from './LootTable.vue'
@@ -14,6 +15,7 @@ import AutocompleteInput from './AutocompleteInput.vue'
 import PurchaseTable from './PurchaseTable.vue'
 import StreamTable from './StreamTable.vue'
 import ConsignmentTable from './ConsignmentTable.vue'
+import SplitDropTable from './SplitDropTable.vue'
 import DistributionPanel from './DistributionPanel.vue'
 import ExportDialog from './ExportDialog.vue'
 import ImportDialog from './ImportDialog.vue'
@@ -71,12 +73,14 @@ function ensureIds() {
   if (!r) return
   const streams = r.streams ?? []
   const consignments = r.consignments ?? []
+  const splitDrops = r.splitDrops ?? []
   const needs =
     r.lootItems.some((it) => !it.id) ||
     r.members.some((m) => !m.id) ||
     r.purchases.some((p) => !p.id) ||
     streams.some((s) => !s.id) ||
-    consignments.some((c) => !c.id)
+    consignments.some((c) => !c.id) ||
+    splitDrops.some((d) => !d.id)
   if (!needs) return
   store.upsert({
     ...r,
@@ -85,6 +89,7 @@ function ensureIds() {
     purchases: r.purchases.map((p) => (p.id ? p : { ...p, id: crypto.randomUUID() })),
     streams: streams.map((s) => (s.id ? s : { ...s, id: crypto.randomUUID() })),
     consignments: consignments.map((c) => (c.id ? c : { ...c, id: crypto.randomUUID() })),
+    splitDrops: splitDrops.map((d) => (d.id ? d : { ...d, id: crypto.randomUUID() })),
   })
 }
 watch(() => route.params.id, ensureIds, { immediate: true })
@@ -242,6 +247,7 @@ function applyImport(parsed: LootRecord) {
     purchases: parsed.purchases,
     streams: parsed.streams ?? [],
     consignments: parsed.consignments ?? [],
+    splitDrops: parsed.splitDrops ?? [],
   })
   ensureIds() // 為剛匯入的資料列補上穩定 id（迴圈安全，手動呼叫）
 }
@@ -260,6 +266,18 @@ function setStreams(streams: Stream[]) {
 function setConsignments(consignments: Consignment[]) {
   patch({ consignments })
 }
+function setSplitDrops(splitDrops: SplitDrop[]) {
+  patch({ splitDrops })
+}
+// 掉落物除不盡就不給發：跟 publishOrSync 裡的擋門同一個判定，這裡只是提早告訴人
+const publishBlock = computed(() => {
+  const r = record.value
+  if (!r) return ''
+  const bad = undividable(r)
+  if (!bad.length) return ''
+  const n = r.members.length
+  return bad.map((d) => `${d.name} ${d.qty} 個無法均分 ${n} 人`).join('；') + '，改好數字再發佈'
+})
 // ---- 圖片（三類：掉落/領錢/外購）----
 function imagesOf(kind: DcImage['kind']): DcImage[] {
   return (record.value?.images ?? []).filter((i) => i.kind === kind)
@@ -410,7 +428,7 @@ function toggleSettle(i: number) {
         {{ record.dc ? '換綁貼文' : '綁定貼文' }}
       </button>
       <button type="button" class="btn btn-sm publish-btn" :class="`publish-${publishState}`"
-        :disabled="publishState === 'busy'"
+        :disabled="publishState === 'busy' || !!publishBlock"
         :title="record.dc ? `上次同步 ${record.dc.lastSyncAt ? fmtSync(record.dc.lastSyncAt) : '—'}` : '建立論壇貼文（討論串標題建立後不可改）'"
         @click="publishToDc">
         <span v-if="publishState === 'busy'" class="spinner" aria-hidden="true" />
@@ -423,6 +441,7 @@ function toggleSettle(i: number) {
       <button type="button" class="btn btn-primary btn-sm" @click="showExport = true">複製回 DC</button>
     </div>
     <p v-if="publishError" class="alert alert-warn">{{ publishError }}</p>
+    <p v-else-if="publishBlock" class="alert alert-warn">{{ publishBlock }}</p>
 
     <div class="card">
       <div class="section-head"><h3>基本資料</h3></div>
@@ -511,6 +530,9 @@ function toggleSettle(i: number) {
     <StreamTable :model-value="record.streams ?? []" @update:model-value="setStreams" />
     <ConsignmentTable :model-value="record.consignments ?? []" :members="record.members" :group-id="record.groupId"
       @update:model-value="setConsignments" />
+
+    <SplitDropTable :model-value="record.splitDrops ?? []" :member-count="record.members.length"
+      :group-id="record.groupId" @update:model-value="setSplitDrops" />
     <ImageSection title="掉落截圖" kind="drop" :images="imagesOf('drop')" :limit="ATTACHMENT_LIMIT"
       @add="addImages" @update="updateImage" @remove="removeImage" @refresh="refreshImageUrl" />
     <ImageSection title="物品出售" kind="sale" :images="imagesOf('sale')" :limit="ATTACHMENT_LIMIT"
