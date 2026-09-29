@@ -524,15 +524,15 @@ function toggleSettle(i: number) {
       </ul>
     </div>
 
+    <!-- 均分放最前面：打完先分實物，賣的錢是之後的事 -->
+    <SplitDropTable :model-value="record.splitDrops ?? []" :member-count="record.members.length"
+      :group-id="record.groupId" @update:model-value="setSplitDrops" />
     <LootTable :model-value="record.lootItems" @update:model-value="setLootItems" />
     <PurchaseTable :model-value="record.purchases" :members="record.members" :group-id="record.groupId"
       @update:model-value="setPurchases" />
     <StreamTable :model-value="record.streams ?? []" @update:model-value="setStreams" />
     <ConsignmentTable :model-value="record.consignments ?? []" :members="record.members" :group-id="record.groupId"
       @update:model-value="setConsignments" />
-
-    <SplitDropTable :model-value="record.splitDrops ?? []" :member-count="record.members.length"
-      :group-id="record.groupId" @update:model-value="setSplitDrops" />
     <ImageSection title="掉落截圖" kind="drop" :images="imagesOf('drop')" :limit="ATTACHMENT_LIMIT"
       @add="addImages" @update="updateImage" @remove="removeImage" @refresh="refreshImageUrl" />
     <ImageSection title="物品出售" kind="sale" :images="imagesOf('sale')" :limit="ATTACHMENT_LIMIT"
