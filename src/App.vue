@@ -3,12 +3,15 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRecordsStore } from './store/records'
 import { dcSyncStatus } from './dc/publish'
-import ChangelogDialog from './components/ChangelogDialog.vue'
+import MarkdownDialog from './components/MarkdownDialog.vue'
+import { fetchChangelog, CHANGELOG_PAGE_URL } from './format/changelog'
+import { fetchReadme, README_PAGE_URL } from './format/readme'
 import pkg from '../package.json'
 
 // 版本號從 package.json 讀（CI 發版時更新的權威來源），不依賴網路
 const version = pkg.version
 const showChangelog = ref(false)
+const showReadme = ref(false)
 
 // 關閉分頁守衛：只管「當下正在編輯的這一筆」。掃全部紀錄會讓刻意留著不同步的
 // 場次（例如東西還在慢慢賣）每次關分頁都跳提醒。
@@ -65,11 +68,17 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
           <router-link to="/loot/settings" class="nav-link subnav-link" active-class="nav-active">設定</router-link>
         </div>
       </nav>
-      <button type="button" class="btn btn-ghost btn-sm version" title="看更新內容"
-        @click="showChangelog = true">v{{ version }}</button>
+      <div class="head-actions">
+        <button type="button" class="btn btn-ghost btn-sm" @click="showReadme = true">說明</button>
+        <button type="button" class="btn btn-ghost btn-sm version" title="看更新內容"
+          @click="showChangelog = true">v{{ version }}</button>
+      </div>
     </header>
 
-    <ChangelogDialog :open="showChangelog" @close="showChangelog = false" />
+    <MarkdownDialog :open="showReadme" title="說明" :page-url="README_PAGE_URL" :load="() => fetchReadme()" wide
+      @close="showReadme = false" />
+    <MarkdownDialog :open="showChangelog" title="更新內容" :page-url="CHANGELOG_PAGE_URL" :load="() => fetchChangelog()"
+      @close="showChangelog = false" />
 
     <div v-if="showUnsynced" class="unsync-overlay" @click.self="showUnsynced = false">
       <div class="unsync-dialog">
@@ -147,7 +156,7 @@ body {
 .nav-boss { grid-row: 1; grid-column: 2; }
 .nav-loot { grid-row: 1; grid-column: 3; }
 .subnav { grid-row: 2; grid-column: 3; display: flex; gap: 4px; }
-.version { grid-row: 1; grid-column: 4; justify-self: end; }
+.head-actions { grid-row: 1; grid-column: 4; justify-self: end; display: flex; align-items: center; gap: 4px; }
 .nav-link {
   text-decoration: none; color: var(--text-muted);
   font-size: 14px; font-weight: 550; padding: 6px 13px; border-radius: 999px;
@@ -287,7 +296,7 @@ button { font-family: inherit; }
   }
   .brand { grid-row: 1; grid-column: 1 / span 2; margin-right: 0; }
   .brand h1 { font-size: 16px; }
-  .version { grid-row: 1; grid-column: 3; }
+  .head-actions { grid-row: 1; grid-column: 3; }
   .nav-boss { grid-row: 2; grid-column: 1; }
   .nav-loot { grid-row: 2; grid-column: 2; }
   .subnav { grid-row: 3; grid-column: 2; }
