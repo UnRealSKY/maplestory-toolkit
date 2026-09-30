@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, provide } from 'vue'
 import type { CycleBoss, HpBoss } from '../boss/bosses'
-import { currentBoss } from '../boss/session'
+import { currentBoss, resetHpFight } from '../boss/session'
+import { passed, finalClock } from '../hp/thresholdState'
+import { points } from '../hp/capture'
 import HpCapture from './HpCapture.vue'
 import CycleBoard from './CycleBoard.vue'
 import HpThresholdBoard from './HpThresholdBoard.vue'
@@ -18,6 +20,11 @@ const boss = computed(() => currentBoss())
 const cycleBoss = computed(() => (boss.value.mechanic === 'cycle' ? (boss.value as CycleBoss) : null))
 const hpBoss = computed(() => (boss.value.mechanic === 'hp' ? (boss.value as HpBoss) : null))
 const reflectBoss = computed(() => boss.value.mechanic === 'damage-reflect')
+const dpsBoss = computed(() => boss.value.mechanic === 'dps')
+// 這兩個模板沒有操作按鈕，打完一場只能靠「重置」開下一場；有東西可清才給按
+const hpFightRunning = computed(
+  () => passed.value.length > 0 || finalClock.value != null || points.value.length > 0,
+)
 </script>
 
 <template>
@@ -25,6 +32,12 @@ const reflectBoss = computed(() => boss.value.mechanic === 'damage-reflect')
   <div v-if="props.compact && !cycleBoss" class="card pip-clock"><AnchorRow /></div>
 
   <HpCapture />
+
+  <!-- 跟循環模板的重置同一個位置：血條下面、面板上面那一列 -->
+  <div v-if="hpBoss || dpsBoss" class="reset-row">
+    <div class="spacer" />
+    <button type="button" class="btn btn-sm" :disabled="!hpFightRunning" @click="resetHpFight">重置</button>
+  </div>
 
   <HpThresholdBoard v-if="hpBoss" :boss="hpBoss" />
 
@@ -37,3 +50,8 @@ const reflectBoss = computed(() => boss.value.mechanic === 'damage-reflect')
 
   <DamageReflectPanel v-else-if="reflectBoss" />
 </template>
+
+<style scoped>
+.reset-row { display: flex; align-items: center; margin-bottom: 8px; }
+.reset-row .spacer { flex: 1; }
+</style>

@@ -26,10 +26,10 @@ export const MECHANICS: Mechanic[] = [
   // [−][88s][＋]，上面那排最右的「重置」按鈕在計時中才會啟用，一起算進去要 393。
   // 高多了一波判斷那一列（44＋下方間距 8）——那列等待時是兩行，高度固定不隨狀態變
   { id: 'cycle', name: '循環', pip: { width: 399, height: 339 } },
-  // 看的不是時間而是血量，掉到門檻就出招（hp/thresholds.ts）
-  { id: 'hp', name: '血量', pip: { width: 347, height: 323 } },
-  // 沒有機制要算，只用血條看輸出
-  { id: 'dps', name: 'DPS', pip: { width: 347, height: 150 } },
+  // 看的不是時間而是血量，掉到門檻就出招（hp/thresholds.ts）。高含血條下面那列「重置」（27＋間距 8）
+  { id: 'hp', name: '血量', pip: { width: 347, height: 358 } },
+  // 沒有機制要算，只用血條看輸出。高含「重置」那列（27，最底下沒有間距）
+  { id: 'dps', name: 'DPS', pip: { width: 347, height: 177 } },
 ]
 
 export const DEFAULT_MECHANIC = MECHANICS[0]

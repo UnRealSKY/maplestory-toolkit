@@ -38,6 +38,8 @@ function dedent(block: string): string {
 const ORDERED_START = /^(\d+)\.\s/
 function renderBlock(block: string): string {
   if (isPipeTable(block)) return renderTable(block)
+  // 單獨一段的 --- 是分隔線；snarkdown 只認夾在文字之間的那種，落單會原樣吐出
+  if (/^\s*-{3,}\s*$/.test(block)) return '<hr>'
   const html = snarkdown(dedent(block))
   const start = Number(block.match(ORDERED_START)?.[1] ?? 1)
   return start > 1 ? html.replace(/^<ol>/, `<ol start="${start}">`) : html

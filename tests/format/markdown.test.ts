@@ -39,6 +39,12 @@ describe('renderMarkdown', () => {
     expect(html.match(/<ol start="1">/)).toBeNull()
   })
 
+  it('單獨一段的 --- 是分隔線，不是三個減號', () => {
+    const html = renderMarkdown('上面\n\n---\n\n下面')
+    expect(html).toContain('<hr>')
+    expect(html).not.toContain('---')
+  })
+
   it('表格段落轉成 table，其餘照 snarkdown', () => {
     const html = renderMarkdown(`## 六個格子\n\n${TABLE}\n\n- 一條清單`)
     expect(html).toContain('<h2')

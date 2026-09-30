@@ -32,6 +32,7 @@ import { now, touchNow } from './clock'
 export { soundOn, bossId, now }
 import { anyCycleRunning, dueCycles, resetCycles } from './cycleClocks'
 import { tickFinalCycle, resetThresholds } from '../hp/thresholdState'
+import { clearHistory, previousBar } from '../hp/capture'
 import type { CycleBoss, HpBoss } from './bosses'
 import { OVERRIDES_KEY, DISPEL_KEY } from '../storageKeys'
 
@@ -162,6 +163,13 @@ export function onResetReflect() {
 }
 export function onNudgeReflect(deltaSec: number) {
   reflectState.value = nudge(reflectState.value, deltaSec)
+}
+
+/** 血量模板與效率推估的「重置」：打完一場，門檻進度、DPS 紀錄、上一條血都清掉；擷取照跑，不必重整頁面 */
+export function resetHpFight(): void {
+  resetThresholds()
+  clearHistory()
+  previousBar.value = null
 }
 
 /** 換王＝換一場，把上一隻王的計時與紀錄都清掉 */
