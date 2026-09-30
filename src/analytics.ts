@@ -26,11 +26,17 @@ export function initAnalytics(id: string = GA_ID): void {
   document.head.appendChild(s)
 }
 
+// 報表用的路徑：編輯頁帶的是隨機的紀錄 id，每筆都變成一個頁面會碎掉，收成一個
+export function pagePath(path: string): string {
+  return path.replace(/^\/loot\/edit\/.*$/, '/loot/edit')
+}
+
 /** 換頁時送一次；path 是 hash 後面那段，例如 /boss-toolkit/cygnus */
 export function pageView(path: string): void {
+  const p = pagePath(path)
   window.gtag?.('event', 'page_view', {
-    page_path: path,
-    page_location: `${location.origin}${location.pathname}#${path}`,
+    page_path: p,
+    page_location: `${location.origin}${location.pathname}#${p}`,
     page_title: document.title,
   })
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initAnalytics, pageView, GA_ID } from '#src/analytics'
+import { initAnalytics, pageView, pagePath, GA_ID } from '#src/analytics'
 
 beforeEach(() => {
   delete window.gtag
@@ -29,6 +29,13 @@ describe('Google Analytics', () => {
     initAnalytics()
     expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1)
     expect((window.dataLayer as unknown[]).length).toBe(2)
+  })
+
+  it('編輯頁的紀錄 id 收掉，其他路徑原樣', () => {
+    expect(pagePath('/loot/edit/3f1c-abc?focus=dist')).toBe('/loot/edit')
+    expect(pagePath('/loot/edit/split-demo')).toBe('/loot/edit')
+    expect(pagePath('/boss-toolkit/cygnus')).toBe('/boss-toolkit/cygnus')
+    expect(pagePath('/loot/pending')).toBe('/loot/pending')
   })
 
   it('pageView 送 hash 後面的路徑，看得出哪隻王', () => {
