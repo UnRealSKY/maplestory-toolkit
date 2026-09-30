@@ -6,7 +6,7 @@
 **網址：<https://unrealsky.github.io/maplestory-toolkit/>**
 
 每隻王有自己的網址（例如 `…/#/boss-toolkit/cygnus`），可以直接貼給隊友。計時中換不了王，先按「重置」。
-所有設定都存在你這台電腦的這個瀏覽器裡，不會上傳。
+所有設定與紀錄都存在你這台電腦的這個瀏覽器裡，不會上傳；只有匿名的使用統計（哪些頁面、哪隻王被開了幾次）會送到 Google Analytics。
 
 ---
 
