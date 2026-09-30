@@ -55,7 +55,7 @@
 
 ![抬頭顯示](docs/screenshots/13-hud.png)
 
-面板另開一個永遠置頂的小視窗浮在遊戲上面：遊戲計時、王血量（連頭像一起從畫面裁下來）、階段倒數、操作按鈕都在裡面，主視窗那份照樣留著，兩邊是同一份狀態。只有 Chromium 系列（Chrome、Edge）支援。
+左上那個就是：永遠置頂的小視窗浮在遊戲上面，遊戲計時、王血量（連頭像一起從畫面裁下來）、階段倒數、操作按鈕都在裡面，主視窗那份照樣留著，兩邊是同一份狀態。只有 Chromium 系列（Chrome、Edge）支援。
 
 ## 全域快捷鍵（選用）
 
@@ -78,11 +78,13 @@
 ### 安裝
 
 1. 下載 [maplestory-toolkit-hotkeys.zip](https://github.com/UnRealSKY/maplestory-toolkit/releases/latest/download/maplestory-toolkit-hotkeys.zip) 並解壓縮。工具箱標題列的「安裝快捷鍵」連的就是這個檔，永遠是最新版。
-2. 網址列輸入 `chrome://extensions`，右上角打開**開發人員模式**（1），按**載入未封裝項目**（2），選解壓出來的 `maplestory-toolkit-hotkeys` 資料夾。
+2. 網址列輸入 `chrome://extensions`（1），右上角打開**開發人員模式**（2），按**載入未封裝項目**（3），選解壓出來的 `maplestory-toolkit-hotkeys` 資料夾。
 
    ![chrome://extensions](docs/screenshots/12-chrome-extensions.png)
 
-3. 網址列輸入 `chrome://extensions/shortcuts`，把「第 1 格」到「第 5 格」各綁一個鍵，每一格右邊的範圍要選 **全域**——不選全域的話 Chrome 沒焦點時收不到。
+3. 網址列輸入 `chrome://extensions/shortcuts`（1），找到這個擴充套件，「第 1 格」到「第 5 格」各點一下輸入框按一個鍵（2），右邊的範圍改成 **通用**（3）——留在「在 Chrome 中」的話，Chrome 沒焦點時收不到。
+
+   ![chrome://extensions/shortcuts](docs/screenshots/14-chrome-shortcuts.png)
 4. 回到工具箱重新整理，按鈕角落會標出各自的鍵；還沒綁的格子顯示「未綁 N」，標題列的「設定快捷鍵」直接帶你去設定頁。
 
 之後有新版：重新下載、解壓到同一個資料夾覆蓋，`chrome://extensions` 按那張卡的**重新載入**，然後**重新整理工具箱頁面**。綁好的鍵不會跑掉。
