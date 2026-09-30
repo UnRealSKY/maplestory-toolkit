@@ -55,8 +55,9 @@ const meta = computed(() => PHASE_META[state.value.phase])
 const resistLeft = computed(() => resistRemaining(state.value, now.value))
 const cooldownLeft = computed(() => cooldownRemaining(state.value, now.value))
 
-// 魔消有效中（間隔進入有效窗、尚未標記、且王的耐性已退）：色塊閃爍提醒。
-// 耐性還在時放了也擋不掉，閃爍催人去放會誤導。
+// 魔消有效中（間隔進入有效窗、尚未標記、且王的耐性已退）：「魔消成功」按鈕脈動、
+// 面板呼吸底色，一直到按下魔消成功或離開間隔為止——條件一轉 false 動畫就停，不必另管計時器。
+// 耐性還在時放了也擋不掉，催人去放會誤導。
 const dispelActive = computed(() => {
   const s = state.value
   if (s.phase !== 'interval' || s.dispelValid || resistLeft.value > 0) return false
@@ -167,8 +168,8 @@ const nextPhaseInfo = computed(() => {
       <button type="button" class="btn ctrl ctrl-reflect" @click="startReflect">反盾開始<SlotBadge :slot="1" /></button>
       <button type="button" class="btn ctrl ctrl-interval" @click="startInterval">反盾結束<SlotBadge :slot="2" /></button>
       <button type="button" class="btn ctrl ctrl-interval" @click="startBlocked">反盾阻止成功<SlotBadge :slot="3" /></button>
-      <button type="button" class="btn btn-primary ctrl" :disabled="state.phase !== 'interval'"
-        @click="dispel">魔消成功<SlotBadge :slot="4" /></button>
+      <button type="button" class="btn btn-primary ctrl" :class="{ 'dispel-now': dispelActive }"
+        :disabled="state.phase !== 'interval'" @click="dispel">魔消成功<SlotBadge :slot="4" /></button>
       <button type="button" class="btn btn-ghost ctrl" @click="onResetReflect">重置</button>
     </div>
     <p class="muted ctrl-hint">
@@ -185,6 +186,29 @@ const nextPhaseInfo = computed(() => {
 <style scoped>
 /* 徽章靠按鈕定位 */
 .controls .ctrl { position: relative; }
+
+/* 可以魔消了：按鈕一秒一輪放大＋發光，面板內框跟著呼吸。子母畫面也看得到 */
+@keyframes dispel-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, .6); }
+  50% { transform: scale(1.07); box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+}
+.ctrl.dispel-now { animation: dispel-pulse 1s ease-in-out infinite; }
+@keyframes panel-breathe {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { box-shadow: inset 0 0 0 5px rgba(99, 102, 241, .45); }
+}
+.phase-panel.dispel-active { animation: panel-breathe 1s ease-in-out infinite; }
+/* 魔消太早：閃黃三下 */
+@keyframes flash-early {
+  50% { box-shadow: inset 0 0 0 5px var(--warn); }
+}
+.phase-panel.flash-early { animation: flash-early .33s linear 3; }
+/* 系統設了減少動態效果：不閃，改靜態高亮 */
+@media (prefers-reduced-motion: reduce) {
+  .ctrl.dispel-now, .phase-panel.dispel-active, .phase-panel.flash-early { animation: none; }
+  .ctrl.dispel-now { box-shadow: 0 0 0 3px var(--primary); }
+  .phase-panel.dispel-active { box-shadow: inset 0 0 0 4px rgba(99, 102, 241, .45); }
+}
 .phase-next { margin-top: 12px; font-size: 15.5px; font-weight: 600; }
 .phase-next .next-time {
   font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 750;
