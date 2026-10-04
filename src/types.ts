@@ -92,7 +92,8 @@ export interface Leader {
 
 export interface LootRecord {
   id: string
-  groupId?: string         // 所屬 DC 群組；未設＝第一個群組（舊紀錄相容）
+  groupId?: string         // 所屬 DC 伺服器；未設＝第一個（舊紀錄相容）。改版前的群組 id 也認得（它變成頻道 id）
+  channelId?: string       // 發到伺服器的哪個頻道；未設＝第一個
   serviceFeePercent?: number  // 交易手續費 %（未填＝0）；遊戲收走的錢，不屬於任何人
   date: string             // YYYY-MM-DD
   boss: string             // 王名，即紀錄標題（列表顯示用）

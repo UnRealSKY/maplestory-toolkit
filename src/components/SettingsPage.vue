@@ -7,7 +7,13 @@ import {
   createGroup,
   patchGroup,
   deleteGroup,
+  createChannel,
+  patchChannel,
+  deleteChannel,
+  moveGroup,
+  moveChannelTo,
   countRecordsIn,
+  countRecordsInChannel,
   leaderFeeEnabled,
   rosterLoading,
   type DcGroup,
@@ -41,9 +47,9 @@ const { groups, activeId } = useGroups()
 const store = useRecordsStore()
 const current = computed<DcGroup | undefined>(() => activeGroup())
 
-// ---- 群組本身 ----
+// ---- 伺服器本身 ----
 function addGroupRow() {
-  const name = window.prompt('新群組名稱：', `群組 ${groups.value.length + 1}`)
+  const name = window.prompt('新伺服器名稱：', `伺服器 ${groups.value.length + 1}`)
   if (name?.trim()) createGroup(name.trim())
 }
 
@@ -51,58 +57,132 @@ function renameGroup(name: string) {
   if (current.value) patchGroup(current.value.id, { name })
 }
 
-// 綁著紀錄的群組不能刪：那些紀錄的 webhook 與名冊都靠它，刪掉會讓金額顯示與發佈目標一起錯亂
+// 綁著紀錄的伺服器不能刪：那些紀錄的名冊與頻道都靠它，刪掉會讓金額顯示與發佈目標一起錯亂
 const boundCount = computed(() =>
   current.value ? countRecordsIn(store.records, groups.value, current.value.id) : 0,
 )
 const deleteBlockReason = computed(() => {
-  if (groups.value.length <= 1) return '至少要保留一個群組'
-  if (boundCount.value) return `還有 ${boundCount.value} 筆紀錄綁在這個群組，請先把它們改到別的群組`
+  if (groups.value.length <= 1) return '至少要保留一個伺服器'
+  if (boundCount.value) return `還有 ${boundCount.value} 筆紀錄綁在這個伺服器，請先把它們改到別的伺服器`
   return ''
 })
 
 function removeCurrent() {
   const g = current.value
   if (!g || deleteBlockReason.value) return
-  if (window.confirm(`確定刪除群組「${g.name}」？`)) deleteGroup(g.id)
+  if (window.confirm(`確定刪除伺服器「${g.name}」？`)) deleteGroup(g.id)
 }
 
-// ---- Webhook ----
-const hookBusy = ref(false)
-const hookError = ref('')
-const hookInfo = ref<WebhookInfo | null>(null)
-
-async function verifyHook() {
+// ---- 頻道（每個頻道一條 webhook）----
+function addChannelRow() {
   const g = current.value
   if (!g) return
-  hookError.value = ''
-  hookInfo.value = null
-  const norm = normalizeWebhookUrl(g.webhookUrl)
+  const name = window.prompt('新頻道名稱：', `頻道 ${g.channels.length + 1}`)
+  if (name?.trim()) createChannel(g.id, name.trim())
+}
+
+// 綁著紀錄的頻道不能刪；最後一個也不能刪，伺服器不能沒有頻道
+function channelDeleteReason(channelId: string): string {
+  const g = current.value
+  if (!g) return ''
+  if (g.channels.length <= 1) return '至少要保留一個頻道'
+  const n = countRecordsInChannel(store.records, groups.value, channelId)
+  return n ? `還有 ${n} 筆紀錄發到這個頻道，請先把它們改到別的頻道` : ''
+}
+
+function removeChannelRow(channelId: string) {
+  const g = current.value
+  if (!g || channelDeleteReason(channelId)) return
+  const c = g.channels.find((x) => x.id === channelId)
+  if (c && window.confirm(`確定刪除頻道「${c.name}」？`)) deleteChannel(g.id, channelId)
+}
+
+// 驗證狀態依頻道各記各的，驗了這條不會把另一條的結果洗掉
+const hookBusy = ref('')
+const hookError = ref<Record<string, string>>({})
+const hookInfo = ref<Record<string, WebhookInfo | undefined>>({})
+
+async function verifyHook(channelId: string) {
+  const g = current.value
+  const c = g?.channels.find((x) => x.id === channelId)
+  if (!g || !c) return
+  hookError.value = { ...hookError.value, [channelId]: '' }
+  hookInfo.value = { ...hookInfo.value, [channelId]: undefined }
+  const norm = normalizeWebhookUrl(c.webhookUrl)
   if (!norm.ok) {
-    hookError.value = norm.error
+    hookError.value = { ...hookError.value, [channelId]: norm.error }
     return
   }
-  hookBusy.value = true
+  hookBusy.value = channelId
   try {
-    hookInfo.value = await getWebhook(norm.url)
-    patchGroup(g.id, { webhookUrl: norm.url })
+    const info = await getWebhook(norm.url)
+    hookInfo.value = { ...hookInfo.value, [channelId]: info }
+    patchChannel(g.id, channelId, { webhookUrl: norm.url })
   } catch (e) {
-    hookError.value = e instanceof Error ? e.message : String(e)
+    hookError.value = { ...hookError.value, [channelId]: e instanceof Error ? e.message : String(e) }
   } finally {
-    hookBusy.value = false
+    hookBusy.value = ''
   }
 }
 
-function setHook(url: string) {
-  hookError.value = ''
-  hookInfo.value = null
-  if (current.value) patchGroup(current.value.id, { webhookUrl: url })
+function setHook(channelId: string, url: string) {
+  hookError.value = { ...hookError.value, [channelId]: '' }
+  hookInfo.value = { ...hookInfo.value, [channelId]: undefined }
+  if (current.value) patchChannel(current.value.id, channelId, { webhookUrl: url })
 }
 
-function clearHook() {
-  hookInfo.value = null
-  hookError.value = ''
-  if (current.value) patchGroup(current.value.id, { webhookUrl: '' })
+function clearHook(channelId: string) {
+  setHook(channelId, '')
+}
+
+// ---- 拖拉：伺服器排序、頻道排序、頻道拖到別的伺服器 ----
+// 用瀏覽器原生拖放；拖的是什麼記在自己這裡，不靠 dataTransfer（jsdom 沒有）
+type Dragging = { kind: 'server'; index: number } | { kind: 'channel'; id: string } | null
+const dragging = ref<Dragging>(null)
+const dropHint = ref('') // 目前懸在哪個 id 上，畫個框
+
+function startDragServer(index: number, e: DragEvent) {
+  dragging.value = { kind: 'server', index }
+  e.dataTransfer?.setData('text/plain', 'server')
+}
+function startDragChannel(id: string, e: DragEvent) {
+  dragging.value = { kind: 'channel', id }
+  e.dataTransfer?.setData('text/plain', 'channel')
+}
+function endDrag() {
+  dragging.value = null
+  dropHint.value = ''
+}
+// 丟到伺服器 chip 上：伺服器拖過來就是排序；頻道拖過來就是搬家（接在那個伺服器最後）
+function dropOnServer(groupId: string, index: number) {
+  const d = dragging.value
+  endDrag()
+  if (!d) return
+  if (d.kind === 'server') {
+    moveGroup(d.index, index)
+    return
+  }
+  const from = groups.value.find((g) => g.channels.some((c) => c.id === d.id))
+  if (!from || from.id === groupId) return
+  const target = groups.value.find((g) => g.id === groupId)
+  if (from.channels.length <= 1) {
+    window.alert('這是該伺服器最後一個頻道，不能搬走')
+    return
+  }
+  const n = countRecordsInChannel(store.records, groups.value, d.id)
+  if (n && !window.confirm(`這個頻道有 ${n} 筆紀錄，搬到「${target?.name}」之後那些紀錄會改用那邊的名冊與辛苦費設定，確定要搬嗎？`)) return
+  moveChannelTo(d.id, groupId, target?.channels.length ?? 0)
+  // 綁著的紀錄跟著搬：groupId 指到新伺服器
+  for (const r of store.records) {
+    if (r.channelId === d.id || (!r.channelId && r.groupId === d.id)) store.upsert({ ...r, groupId, channelId: d.id })
+  }
+}
+// 丟到同伺服器的某一列上：排到那一列的位置
+function dropOnChannel(index: number) {
+  const d = dragging.value
+  endDrag()
+  if (!d || d.kind !== 'channel' || !current.value) return
+  moveChannelTo(d.id, current.value.id, index)
 }
 
 // ---- 名單 ----
@@ -220,43 +300,36 @@ async function copyJson(key: 'roster' | 'items') {
       <h2>設定</h2>
     </div>
     <p class="muted intro">
-      一個 DC 群組＝一套設定集：名稱、發佈用的 Webhook、以及團員名冊。
-      每筆分寶紀錄綁定一個群組，發佈與別名顯示都跟著它走。
+      一個伺服器＝一份名單與辛苦費設定，底下每個頻道各有一條發佈用的 Webhook。
+      每筆分寶紀錄選「發到」哪個頻道：發佈走那條 Webhook，名字查該伺服器的名冊。
     </p>
 
-    <!-- DC 群組 -->
+    <!-- 伺服器 -->
     <div class="card">
       <div class="section-head">
-        <h3>DC 群組</h3>
+        <h3>伺服器</h3>
         <span class="count">{{ groups.length }} 個</span>
         <div class="spacer" />
-        <button type="button" class="btn btn-sm" @click="addGroupRow">＋ 新增群組</button>
+        <button type="button" class="btn btn-sm" @click="addGroupRow">＋ 新增伺服器</button>
       </div>
 
-      <div class="group-tabs" role="group" aria-label="選擇群組">
-        <button v-for="g in groups" :key="g.id" type="button" class="btn btn-sm group-chip"
-          :class="{ 'group-on': g.id === activeId }" :aria-pressed="g.id === activeId"
-          @click="setActiveGroup(g.id)">{{ g.name }}</button>
+      <!-- 拖 chip 排序；把下面的頻道拖到 chip 上就搬到那個伺服器 -->
+      <div class="group-tabs" role="group" aria-label="選擇伺服器">
+        <button v-for="(g, i) in groups" :key="g.id" type="button" class="btn btn-sm group-chip"
+          :class="{ 'group-on': g.id === activeId, 'drop-target': dropHint === g.id }" :aria-pressed="g.id === activeId"
+          draggable="true"
+          @click="setActiveGroup(g.id)"
+          @dragstart="startDragServer(i, $event)" @dragend="endDrag"
+          @dragover.prevent="dropHint = g.id" @dragleave="dropHint = ''"
+          @drop.prevent="dropOnServer(g.id, i)">{{ g.name }}</button>
       </div>
 
       <template v-if="current">
         <div class="group-fields">
           <label class="field">
             <span class="field-label">名稱</span>
-            <input :value="current.name" placeholder="群組名稱"
+            <input :value="current.name" placeholder="伺服器名稱"
               @input="renameGroup(($event.target as HTMLInputElement).value)" />
-          </label>
-          <label class="field field-wide">
-            <span class="field-label">群組 Webhook</span>
-            <div class="hook-row">
-              <input :value="current.webhookUrl" placeholder="https://discord.com/api/webhooks/…"
-                autocomplete="off" spellcheck="false"
-                @input="setHook(($event.target as HTMLInputElement).value)" />
-              <button type="button" class="btn btn-primary btn-sm" :disabled="hookBusy"
-                @click="verifyHook">{{ hookBusy ? '驗證中…' : '驗證' }}</button>
-              <button v-if="current.webhookUrl" type="button" class="btn btn-ghost btn-danger btn-sm"
-                @click="clearHook">清除</button>
-            </div>
           </label>
         </div>
         <label class="toggle-row">
@@ -264,11 +337,40 @@ async function copyJson(key: 'roster' | 'items') {
             @change="patchGroup(current.id, { enableLeaderFee: ($event.target as HTMLInputElement).checked })" />
           啟用團長辛苦費
         </label>
-        <p v-if="hookError" class="field-error">{{ hookError }}</p>
-        <p v-if="hookInfo" class="ok-note">
-          ✓ 已驗證並儲存：<strong>{{ hookInfo.name }}</strong>
-          <span class="muted">（頻道 {{ hookInfo.channelId }}）</span>
-        </p>
+
+        <div class="section-head channels-head">
+          <h3>頻道</h3>
+          <span class="count">{{ current.channels.length }} 個</span>
+          <div class="spacer" />
+          <button type="button" class="btn btn-sm" @click="addChannelRow">＋ 新增頻道</button>
+        </div>
+        <ul class="channel-list">
+          <li v-for="(c, i) in current.channels" :key="c.id" class="channel-row"
+            :class="{ 'drop-target': dropHint === c.id }"
+            draggable="true"
+            @dragstart="startDragChannel(c.id, $event)" @dragend="endDrag"
+            @dragover.prevent="dropHint = c.id" @dragleave="dropHint = ''"
+            @drop.prevent="dropOnChannel(i)">
+            <span class="drag-handle" title="拖拉排序，拖到上面的伺服器就搬過去">⠿</span>
+            <input class="channel-name" :value="c.name" placeholder="頻道名稱"
+              @input="patchChannel(current.id, c.id, { name: ($event.target as HTMLInputElement).value })" />
+            <input class="channel-hook" :value="c.webhookUrl" placeholder="https://discord.com/api/webhooks/…"
+              autocomplete="off" spellcheck="false"
+              @input="setHook(c.id, ($event.target as HTMLInputElement).value)" />
+            <button type="button" class="btn btn-primary btn-sm" :disabled="hookBusy === c.id"
+              @click="verifyHook(c.id)">{{ hookBusy === c.id ? '驗證中…' : '驗證' }}</button>
+            <button v-if="c.webhookUrl" type="button" class="btn btn-ghost btn-danger btn-sm"
+              @click="clearHook(c.id)">清除</button>
+            <button type="button" class="btn btn-icon btn-danger channel-remove"
+              :title="channelDeleteReason(c.id) || '刪除頻道'" :disabled="!!channelDeleteReason(c.id)"
+              @click="removeChannelRow(c.id)">✕</button>
+            <p v-if="hookError[c.id]" class="field-error channel-note">{{ hookError[c.id] }}</p>
+            <p v-else-if="hookInfo[c.id]" class="ok-note channel-note">
+              ✓ 已驗證並儲存：<strong>{{ hookInfo[c.id]?.name }}</strong>
+              <span class="muted">（頻道 {{ hookInfo[c.id]?.channelId }}）</span>
+            </p>
+          </li>
+        </ul>
         <p class="muted hook-note">
           目標頻道必須是<strong>論壇頻道</strong>（一般文字頻道無法由 webhook 建立討論串）。
           Webhook URL 等同密鑰，勿貼到公開頻道；共用電腦用畢請清除。
@@ -345,7 +447,7 @@ async function copyJson(key: 'roster' | 'items') {
         <h3>品名清單</h3>
         <span class="count">{{ sharedItemNames().length }} 項</span>
         <span v-if="sharedItemsLoading().value" class="count">載入中…</span>
-        <span class="count">所有群組共用</span>
+        <span class="count">所有伺服器共用</span>
         <div class="spacer" />
         <button type="button" class="btn btn-sm" @click="copyJson('items')">
           {{ copied === 'items' ? '✓ 已複製' : '匯出 JSON' }}
@@ -389,9 +491,20 @@ async function copyJson(key: 'roster' | 'items') {
 .group-fields .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .group-fields .field-label { font-size: 12.5px; font-weight: 550; color: var(--text-muted); }
 .field-wide { grid-column: span 2; }
-.hook-row { display: flex; gap: 8px; }
-.hook-row input { font-family: var(--mono); font-size: 13px; }
-.hook-row .btn { flex: none; }
+.channels-head { margin-top: 18px; }
+.channel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.channel-row {
+  display: grid; grid-template-columns: auto 160px 1fr auto auto auto; gap: 8px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+}
+.channel-row .channel-hook { font-family: var(--mono); font-size: 13px; min-width: 0; }
+.channel-row .btn { flex: none; }
+.channel-note { grid-column: 1 / -1; margin: 0; }
+.drag-handle { cursor: grab; color: var(--text-muted); user-select: none; font-size: 16px; padding: 0 2px; }
+.channel-row:active .drag-handle { cursor: grabbing; }
+.drop-target { outline: 2px dashed var(--primary); outline-offset: 2px; }
+.channel-remove:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 720px) { .channel-row { grid-template-columns: auto 1fr; } .channel-row .channel-hook { grid-column: 1 / -1; } }
 .hook-note { margin: 10px 0 0; font-size: 12.5px; }
 .toggle-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; cursor: pointer; }
 .toggle-row input { width: auto; }

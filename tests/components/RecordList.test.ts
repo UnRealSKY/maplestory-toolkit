@@ -15,8 +15,8 @@ beforeEach(() => {
 function seedGroups() {
   const { groups } = useGroups()
   groups.value = [
-    { id: 'g1', name: '甲團', webhookUrl: '', rosterMode: 'local', roster: [] },
-    { id: 'g2', name: '乙團', webhookUrl: '', rosterMode: 'local', roster: [] },
+    { id: 'g1', name: '甲團', rosterMode: 'local', roster: [], channels: [{ id: 'g1-ch', name: '分寶', webhookUrl: '' }] },
+    { id: 'g2', name: '乙團', rosterMode: 'local', roster: [], channels: [{ id: 'g2-ch', name: '分寶', webhookUrl: '' }] },
   ]
 }
 
@@ -28,14 +28,14 @@ describe('分寶列表顯示群組', () => {
     store.create({ date: '2026-08-01', boss: '甲王', groupId: 'g1', members: [], lootItems: [], purchases: [] })
     const w = mount(RecordList, { global: { stubs } })
     // 依日期新到舊：乙王在前
-    expect(w.findAll('.record-group').map((e) => e.text())).toEqual(['乙團', '甲團'])
+    expect(w.findAll('.record-group').map((e) => e.text())).toEqual(['乙團 › #分寶', '甲團 › #分寶'])
   })
 
   it('沒有 groupId 的舊紀錄算第一個群組', () => {
     seedGroups()
     useRecordsStore().create({ date: '2026-08-01', boss: '舊王', members: [], lootItems: [], purchases: [] })
     const w = mount(RecordList, { global: { stubs } })
-    expect(w.find('.record-group').text()).toBe('甲團')
+    expect(w.find('.record-group').text()).toBe('甲團 › #分寶')
   })
 
   it('沒有任何群組時不顯示空標籤', () => {

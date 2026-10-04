@@ -18,7 +18,8 @@ const roster = (entries: Partial<RosterEntry>[]): RosterEntry[] =>
   entries.map((e) => ({ discordHandle: '', discordNickName: '', ...e }))
 
 const group = (over: Partial<DcGroup>): DcGroup => ({
-  id: 'g1', name: '我的公會', webhookUrl: '', rosterMode: 'local', roster: [], ...over,
+  id: 'g1', name: '我的公會', rosterMode: 'local', roster: [],
+  channels: [{ id: `${over.id ?? 'g1'}-ch`, name: '分寶', webhookUrl: '' }], ...over,
 })
 
 describe('migrateGroups', () => {
@@ -33,9 +34,10 @@ describe('migrateGroups', () => {
     expect(groups).toHaveLength(1)
     expect(groups[0]).toMatchObject({
       name: '我的公會',
-      webhookUrl: 'https://discord.com/api/webhooks/1/abc',
       rosterMode: 'url', // 舊的「預設來源」＝跟隨官方 repo，轉成 url 模式
     })
+    expect(groups[0].channels).toHaveLength(1)
+    expect(groups[0].channels[0].webhookUrl).toBe('https://discord.com/api/webhooks/1/abc')
     expect(groups[0].rosterUrl).toContain('members.json')
     expect(groups[0].roster).toHaveLength(1)
   })
@@ -69,7 +71,8 @@ describe('migrateGroups', () => {
     expect(groups[0].rosterMode).toBe('local')
     expect(groups[0].rosterUrl).toBeUndefined()
     expect(groups[0].roster).toEqual([])
-    expect(groups[0].webhookUrl).toBe('')
+    expect(groups[0].channels).toHaveLength(1)
+    expect(groups[0].channels[0].webhookUrl).toBe('')
   })
 
   it('有舊資料時才沿用「預設來源」＝跟隨官方 repo', () => {
@@ -113,9 +116,9 @@ describe('群組增刪改', () => {
   })
 
   it('更新只影響指定群組', () => {
-    const next = updateGroup(base, 'g2', { name: 'B2', webhookUrl: 'https://x' })
+    const next = updateGroup(base, 'g2', { name: 'B2', enableLeaderFee: true })
     expect(next[0]).toEqual(base[0])
-    expect(next[1]).toMatchObject({ id: 'g2', name: 'B2', webhookUrl: 'https://x' })
+    expect(next[1]).toMatchObject({ id: 'g2', name: 'B2', enableLeaderFee: true })
   })
 
   it('更新不存在的 id 不改變任何東西', () => {
@@ -226,9 +229,10 @@ describe('applyMagicRoster（隱藏設定：群組取名「贖罪券」）', () 
     expect(g.rosterMode).toBe('local')
   })
 
-  it('保留名冊以外的設定（webhook 不受影響）', () => {
-    const g = applyMagicRoster(group({ name: '贖罪券', webhookUrl: 'https://x/y' }))
-    expect(g.webhookUrl).toBe('https://x/y')
+  it('保留名冊以外的設定（頻道與 webhook 不受影響）', () => {
+    const channels = [{ id: 'c', name: '分寶', webhookUrl: 'https://x/y' }]
+    const g = applyMagicRoster(group({ name: '贖罪券', channels }))
+    expect(g.channels).toBe(channels)
   })
 })
 

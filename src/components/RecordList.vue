@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useRecordsStore } from '../store/records'
 import { allSold, allSettled } from '../calc/status'
 import { dcSyncStatus } from '../dc/publish'
-import { groupOf } from '../store/groups'
+import { groupOf, channelOf } from '../store/groups'
 import type { LootRecord } from '../types'
 import ImportDialog from './ImportDialog.vue'
 
@@ -20,8 +20,11 @@ const sorted = computed(() =>
 )
 
 // 紀錄屬於哪個群組（沒設 groupId 的舊紀錄跟著第一個群組走，與名冊、統計同一套判定）
-function groupName(groupId?: string): string {
-  return groupOf(groupId)?.name ?? ''
+function groupName(groupId?: string, channelId?: string): string {
+  const g = groupOf(groupId)
+  if (!g) return ''
+  const c = channelOf(groupId, channelId)
+  return c ? `${g.name} › #${c.name}` : g.name
 }
 
 const showImport = ref(false)
@@ -72,7 +75,7 @@ function toggleShelve(id: string) {
         <router-link :to="`/loot/edit/${r.id}`" class="record-main">
           <span class="record-title">{{ r.boss || '(未命名)' }}</span>
           <span class="record-meta">
-            <span v-if="groupName(r.groupId)" class="record-group">{{ groupName(r.groupId) }}</span>
+            <span v-if="groupName(r.groupId, r.channelId)" class="record-group">{{ groupName(r.groupId, r.channelId) }}</span>
             <span v-if="r.date">{{ r.date }}</span>
             <span v-if="r.members.length">{{ r.members.length }} 人</span>
           </span>

@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useRecordsStore } from '../store/records'
 import { useHistory } from '../store/history'
-import { aliasOfIn, groupOf, useGroups, leaderFeeEnabled } from '../store/groups'
+import { aliasOfIn, groupOf, channelOf, webhookFor, useGroups, leaderFeeEnabled } from '../store/groups'
 import { publishOrSync, publishContent, hasImageChanges, dcSyncStatus, ATTACHMENT_LIMIT } from '../dc/publish'
 import { parseMessageLink, isBindingLost, getMessage } from '../dc/webhook'
 import type { LootRecord, LootItem, Member, Purchase, Stream, Consignment, SplitDrop, DcImage, DcImageKind } from '../types'
@@ -32,20 +32,23 @@ function patch(part: Partial<LootRecord>) {
 
 const bossError = computed(() => !record.value || !record.value.boss.trim())
 
-// ---- 所屬 DC 群組（決定用哪個 webhook 與哪份名冊）----
+// ---- 發到哪裡：伺服器決定名冊與辛苦費，頻道決定 webhook ----
 const { groups } = useGroups()
 const groupId = computed(() => record.value?.groupId)
-// 沒指定的舊紀錄落在第一個群組，下拉要顯示成那一個
-const shownGroupId = computed(() => groupOf(groupId.value)?.id ?? '')
+// 沒指定的舊紀錄落在第一個伺服器的第一個頻道，下拉要顯示成那一個
+const shownChannelId = computed(() => channelOf(groupId.value, record.value?.channelId)?.id ?? '')
 
-function setGroup(id: string) {
+// 下拉的值是頻道 id；伺服器由頻道反查
+function setChannel(channelId: string) {
   const r = record.value
-  if (!r || id === r.groupId) return
-  // 已發佈的貼文綁在原群組的頻道上，換群組等於之後同步會發到別的地方
-  if (r.dc && !window.confirm('這筆紀錄已經發佈到 DC。\n換群組之後同步會送到新群組的頻道，確定要換嗎？')) {
+  if (!r) return
+  const server = groups.value.find((g) => g.channels.some((c) => c.id === channelId))
+  if (!server || channelId === shownChannelId.value) return
+  // 已發佈的貼文綁在原本那個頻道上，換頻道等於之後同步會發到別的頻道
+  if (r.dc && !window.confirm('這筆紀錄已經發佈到 DC。\n換頻道之後同步會送到新的頻道，確定要換嗎？')) {
     return
   }
-  patch({ groupId: id })
+  patch({ groupId: server.id, channelId })
 }
 
 // 群組關掉辛苦費時，整張「團長」卡片與團員列上的標記都不顯示
@@ -102,7 +105,7 @@ onMounted(() => {
 })
 
 // ---- 發佈/同步至 DC ----
-const dcUrl = computed(() => groupOf(record.value?.groupId)?.webhookUrl ?? '')
+const dcUrl = computed(() => webhookFor(record.value?.groupId, record.value?.channelId))
 type PublishState = 'idle' | 'busy' | 'ok' | 'fail'
 const publishState = ref<PublishState>('idle')
 const publishError = ref('')
@@ -163,7 +166,7 @@ async function publishToDc() {
   if (!r || publishState.value === 'busy') return
   publishError.value = ''
   if (!dcUrl.value) {
-    publishError.value = '這個群組還沒設定 Webhook URL（設定頁 → DC 群組）'
+    publishError.value = '這個頻道還沒設定 Webhook URL（設定頁 → 伺服器 → 頻道）'
     return
   }
   if (bossError.value) {
@@ -464,9 +467,11 @@ function toggleDropsSettle(i: number) {
             @input="patch({ date: ($event.target as HTMLInputElement).value })" />
         </label>
         <label class="field">
-          <span class="field-label">DC 群組</span>
-          <select :value="shownGroupId" @change="setGroup(($event.target as HTMLSelectElement).value)">
-            <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+          <span class="field-label">發到</span>
+          <select :value="shownChannelId" @change="setChannel(($event.target as HTMLSelectElement).value)">
+            <optgroup v-for="g in groups" :key="g.id" :label="g.name">
+              <option v-for="c in g.channels" :key="c.id" :value="c.id">#{{ c.name }}</option>
+            </optgroup>
           </select>
         </label>
         <label class="field">

@@ -93,11 +93,11 @@ describe('handle 建議依群組分開', () => {
   function seedGroups() {
     groups.value = [
       {
-        id: 'g1', name: '甲團', webhookUrl: '', rosterMode: 'local',
+        id: 'g1', name: '甲團', rosterMode: 'local', channels: [{ id: 'g1-ch', name: '分寶', webhookUrl: '' }],
         roster: [{ discordHandle: '@roster1', discordNickName: '甲名冊' }],
       },
       {
-        id: 'g2', name: '乙團', webhookUrl: '', rosterMode: 'local',
+        id: 'g2', name: '乙團', rosterMode: 'local', channels: [{ id: 'g2-ch', name: '分寶', webhookUrl: '' }],
         roster: [{ discordHandle: '@roster2', discordNickName: '乙名冊' }],
       },
     ]

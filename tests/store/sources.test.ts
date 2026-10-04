@@ -94,10 +94,8 @@ describe('舊的單一設定遷移成群組', () => {
     )
     const groups = await import('#src/store/groups')
     const [g] = groups.useGroups().groups.value
-    expect(g).toMatchObject({
-      webhookUrl: 'https://discord.com/api/webhooks/1/abc',
-      rosterMode: 'local',
-    })
+    expect(g).toMatchObject({ rosterMode: 'local' })
+    expect(g.channels[0].webhookUrl).toBe('https://discord.com/api/webhooks/1/abc')
     // 舊名冊格式也一併轉成新結構
     expect(g.roster).toEqual([
       { discordHandle: '@a', discordNickName: '天天', discordId: '123' },
@@ -110,7 +108,7 @@ describe('舊的單一設定遷移成群組', () => {
     await import('#src/store/groups')
     const stored = JSON.parse(localStorage.getItem(GROUPS_KEY)!)
     expect(stored).toHaveLength(1)
-    expect(stored[0].webhookUrl).toBe('https://x')
+    expect(stored[0].channels[0].webhookUrl).toBe('https://x')
   })
 
   it('已有群組資料時不再遷移，舊的 webhook 不會蓋掉現有設定', async () => {
@@ -119,7 +117,8 @@ describe('舊的單一設定遷移成群組', () => {
       { id: 'g1', name: 'A', webhookUrl: 'https://new', rosterMode: 'local', roster: [] },
     ]))
     const groups = await import('#src/store/groups')
-    expect(groups.useGroups().groups.value[0].webhookUrl).toBe('https://new')
+    // 舊形狀會被整理成伺服器＋頻道，但 webhook 是原本存的那條，不是更舊的 legacy key
+    expect(groups.useGroups().groups.value[0].channels[0].webhookUrl).toBe('https://new')
   })
 })
 
