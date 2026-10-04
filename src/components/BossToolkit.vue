@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BOSSES, bossById, reflectBossById, setOverride, type BossOverride, type CycleBoss } from '../boss/bosses'
-import { DEFAULT_DISPEL_DURATION } from '../boss/bosses'
+import { DEFAULT_DISPEL_DURATION, DISPEL_PRESETS } from '../boss/bosses'
 import { mechanicById } from '../boss/mechanics'
 import {
   bossId,
@@ -246,6 +246,12 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
         </fieldset>
         <fieldset class="param-group">
           <legend>玩家技能</legend>
+          <!-- 常見職業一鍵填，選中的實心底；自己打別的秒數就兩顆都不亮 -->
+          <div class="dispel-presets" role="group" aria-label="魔消職業">
+            <button v-for="p in DISPEL_PRESETS" :key="p.name" type="button" class="btn btn-sm dispel-preset"
+              :class="{ 'boss-on': dispelSeconds === p.seconds }" :aria-pressed="dispelSeconds === p.seconds"
+              @click="dispelSeconds = p.seconds">{{ p.name }}（{{ p.seconds }}s）</button>
+          </div>
           <div class="param-grid">
             <label class="field">
               <span class="field-label">魔消持續（秒，預設 {{ DEFAULT_DISPEL_DURATION }}）</span>
@@ -262,6 +268,7 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
 .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .page-head h2 { margin: 0; font-size: 20px; font-weight: 680; }
 .page-head .spacer { flex: 1; }
+.dispel-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 /* 它是連結但長得像按鈕，底線拿掉 */
 .hotkey-install { text-decoration: none; }
 .sound-toggle { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); cursor: pointer; }

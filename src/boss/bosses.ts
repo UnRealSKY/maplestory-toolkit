@@ -99,6 +99,12 @@ export function reflectBossById(id: string): ReflectBoss {
 // 玩家的魔消技能持續（秒）
 export const DEFAULT_DISPEL_DURATION = 20
 
+// 常見職業的魔消：一鍵填秒數，不用自己查。沒列的職業照樣可以在輸入框打
+export const DISPEL_PRESETS = [
+  { name: '三劍魔消', seconds: 20 },
+  { name: '幻影魔消', seconds: 14 },
+] as const
+
 export interface BossOverride {
   reflectDuration: number
   interval: number

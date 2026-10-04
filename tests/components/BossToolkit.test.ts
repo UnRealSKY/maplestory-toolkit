@@ -67,6 +67,20 @@ describe('BossToolkit 選王', () => {
     expect(seconds(w, 3)).toBe('20')
   })
 
+  it('三劍、幻影一鍵填魔消秒數，選中的實心底；自己打別的秒數就都不亮', async () => {
+    const { w } = await mountToolkit()
+    const presets = w.findAll('.dispel-preset')
+    expect(presets.map((b) => b.text())).toEqual(['三劍魔消（20s）', '幻影魔消（14s）'])
+    expect(presets[0].classes()).toContain('boss-on') // 預設 20 就是三劍
+    await presets[1].trigger('click')
+    expect(seconds(w, 3)).toBe('14')
+    expect(dispelDuration.value).toBe(14)
+    expect(presets[1].classes()).toContain('boss-on')
+    expect(presets[0].classes()).not.toContain('boss-on')
+    await numberInputs(w)[3].setValue(17)
+    expect(w.findAll('.dispel-preset').every((b) => !b.classes().includes('boss-on'))).toBe(true)
+  })
+
   it('計時中鎖住換王，重置後解鎖', async () => {
     const { w } = await mountToolkit()
     await w.findAll('.ctrl')[0].trigger('click') // 反盾開始
