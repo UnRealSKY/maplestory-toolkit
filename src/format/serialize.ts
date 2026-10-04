@@ -1,5 +1,5 @@
 import type { LootRecord, LootItem, SettleStatus } from '../types'
-import { memberDists, summaryLine, distLine, splitDropSuffix } from './dist'
+import { memberDists, summaryLine, distLine, splitDropShares, dropsList } from './dist'
 import { perMember } from '../calc/splitDrops'
 import type { DistOptions } from '../calc/distribution'
 
@@ -85,9 +85,12 @@ export function serialize(record: LootRecord, opts?: DistOptions): string {
   lines.push('', '## 分配')
   lines.push(summaryLine(record, opts))
 
-  const suffix = splitDropSuffix(record)
+  // 有可分的實物時每人那行接「｜ 物的狀態 清單」；錢的狀態在行首，物的在｜後面，兩個各自標
+  const shares = splitDropShares(record)
+  const list = dropsList(shares)
   for (const d of memberDists(record, opts)) {
-    lines.push(`* ${settleEmoji(d.member.settle)} ${d.member.handle}: ${distLine(d)}${suffix}`)
+    const drops = shares.length ? ` ｜ ${settleEmoji(d.member.dropsSettle ?? 'pending')} ${list}` : ''
+    lines.push(`* ${settleEmoji(d.member.settle)} ${d.member.handle}: ${distLine(d)}${drops}`)
   }
 
   return lines.join('\n')

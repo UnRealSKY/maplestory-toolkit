@@ -1,4 +1,4 @@
-import type { LootRecord, LootItem, LootStatus, Stream, Consignment, SettleStatus } from '../types'
+import type { LootRecord, LootItem, LootStatus, Stream, Consignment, SettleStatus, Member } from '../types'
 
 type Section = 'loot' | 'purchase' | 'stream' | 'consignment' | 'splitDrop' | 'dist' | 'none'
 // 均分行：* 品名xN，後面可能跟著「（無法均分 N 人）」的註記；品名裡可能有 x，取最後一個 xN
@@ -20,6 +20,8 @@ const STREAM_RE = /^\*\s*(.+?)\s*:\s*(https?:\/\/\S+)\s*$/
 const DIST_RE = /^\*\s*(\S+)\s+(<@\d+>|@[^\s:：]+)/
 // 同一行的算式部分（辨識團長用）
 const DIST_EXPR_RE = /^\*\s*\S+\s+(?:<@\d+>|@[^\s:：]+)\s*[:：]?\s*(.*)$/
+// ｜後面是均分實物：開頭可能帶著「領了沒」的狀態 token
+const DIST_DROPS_RE = /｜\s*(:\w+:|[^\s\w一-鿿]+)\s/
 // 總共行：先抓到除號前的整個算式，再從裡面挑出扣除項。
 // 形如 10000 * (1 - 3%[手續費] - 5%[辛苦費]) / 5 = 1840
 //   或 (10000 * (1 - 3%[手續費]) - 500[辛苦費]) / 5 = 1840
@@ -191,7 +193,10 @@ export function parse(md: string): LootRecord {
       }
       const d = line.match(DIST_RE)
       if (!d) continue
-      record.members.push({ handle: d[2], settle: settleFrom(d[1]) })
+      const member: Member = { handle: d[2], settle: settleFrom(d[1]) }
+      const drops = line.match(DIST_DROPS_RE)
+      if (drops) member.dropsSettle = settleFrom(drops[1])
+      record.members.push(member)
       // 總共行一定在分配行之前，所以這時 fee 已經知道了
       if (fee > 0 && hasFeeTerm(line.match(DIST_EXPR_RE)?.[1] ?? '', fee)) leaderHandle = d[2]
     }

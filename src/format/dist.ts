@@ -120,8 +120,3 @@ export function dropsList(shares: DropShare[]): string {
 export function dropsSuffix(shares: DropShare[]): string {
   return shares.length ? ` ｜ ${dropsList(shares)}` : ''
 }
-
-// 每人那行後面的掉落物均分字尾。serialize 與未領總覽共用同一份，複製進遊戲的那行才跟主文對得上
-export function splitDropSuffix(record: LootRecord): string {
-  return dropsSuffix(splitDropShares(record))
-}
