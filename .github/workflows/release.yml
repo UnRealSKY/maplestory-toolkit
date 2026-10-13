@@ -6,6 +6,8 @@ name: Release
 #     → commit「# Version」推回 main（[skip ci]）→ changeset tag（tag 指向新版 commit）
 # 手動觸發（workflow_dispatch）：push changeset 到 main 後不會自動上 Pages，
 # 由維護者到 Actions 手動 Run workflow，作為「反悔」關卡。
+# 沒有 pending changeset 時改走 redeploy：照目前版本重新 build 部署 Pages，
+# 不 bump、不打 tag、不發 Release 與 Discord 通知（例如 Pages 設定被重設後補部署）。
 on:
   workflow_dispatch:
 
@@ -32,9 +34,32 @@ jobs:
           if ls .changeset/*-*.md >/dev/null 2>&1; then
             echo "has_changeset=true" >> "$GITHUB_OUTPUT"
           else
-            echo "偵測不到 pending changeset，略過發版"
+            echo "偵測不到 pending changeset，略過發版，只重新部署目前版本"
             echo "has_changeset=false" >> "$GITHUB_OUTPUT"
           fi
+
+  redeploy:
+    needs: detect
+    if: needs.detect.outputs.has_changeset == 'false'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
 
   release:
     needs: detect
