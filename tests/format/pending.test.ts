@@ -45,10 +45,7 @@ const r2 = makeRecord({
     { handle: '@d', settle: 'settled' },
     { handle: '@e', settle: 'settled' },
   ],
-  lootItems: [
-    { status: 'ok', name: 'x', qty: 1, unitPrice: 1259 },
-    { status: 'cart', name: '待售品', qty: 1, unitPrice: null },
-  ],
+  lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 1259 }],
   purchases: [{ buyer: '@.unrealsky', name: '白衣5%', qty: 1, unitPrice: 200 }],
 })
 
@@ -80,10 +77,11 @@ describe('pendingBlocks', () => {
     expect(b.total).toBe(1263)
   })
 
-  it('hasCart 標記待售中的紀錄', () => {
-    const [b] = blocks
-    expect(b.records[0].hasCart).toBe(false)
-    expect(b.records[1].hasCart).toBe(true)
+  it('還有待售項目的紀錄不列入，賣掉或不計入後恢復列入', () => {
+    const withCart = { ...r1, lootItems: [...r1.lootItems, { status: 'cart' as const, name: '待售品', qty: 1, unitPrice: null }] }
+    expect(pendingBlocks([withCart], display)).toEqual([])
+    const sold = { ...withCart, lootItems: [r1.lootItems[0], { status: 'ok' as const, name: '待售品', qty: 1, unitPrice: 0 }] }
+    expect(pendingBlocks([sold], display)).toHaveLength(1)
   })
 
   it('單場時總計就是那一場的金額', () => {

@@ -4,7 +4,6 @@ import type { DistOptions } from '../calc/distribution'
 
 export interface PendingRecordDetail {
   recordId: string
-  hasCart: boolean // 尚有待售項目，金額可能變動
   amount: number // 還沒領的錢；錢領了就是 0
   moneyPending: boolean // 錢還沒領
   dropsPending: boolean // 這場有可分實物而且還沒領
@@ -44,7 +43,7 @@ export function pendingBlocks(
   const dropTotals = new Map<string, Map<string, number>>()
   for (const r of [...records].sort(byDateAsc)) {
     if (r.shelved) continue // 擱置中：暫不列入統計
-    const hasCart = r.lootItems.some((it) => it.status === 'cart')
+    if (r.lootItems.some((it) => it.status === 'cart')) continue // 還有待售：金額還沒定，賣完才列入
     const opts = optionsFor?.(r.groupId)
     const shares = splitDropShares(r)
     const { base } = distSummary(r, opts)
@@ -71,7 +70,7 @@ export function pendingBlocks(
         blocks.set(handle, block)
         dropTotals.set(handle, new Map())
       }
-      block.records.push({ recordId: r.id, hasCart, amount: moneyPending ? d.amount : 0, moneyPending, dropsPending, lines })
+      block.records.push({ recordId: r.id, amount: moneyPending ? d.amount : 0, moneyPending, dropsPending, lines })
       if (dropsPending) {
         const totals = dropTotals.get(handle)!
         for (const s of shares) totals.set(s.name, (totals.get(s.name) ?? 0) + s.each)

@@ -68,7 +68,6 @@ function markReceived(recordId: string, handle: string, field: 'settle' | 'drops
       <div v-for="rec in b.records" :key="rec.recordId" class="rec-group">
         <div v-for="(line, i) in rec.lines" :key="i" class="line">
           <code class="line-text">{{ line }}</code>
-          <span v-if="i === 0 && rec.hasCart" class="chip chip-cart cart-note" title="金額可能變動">尚有待售</span>
           <a v-if="i === 0" class="btn btn-sm open-btn" :href="editHref(rec.recordId)"
             target="_blank" rel="noopener" title="開新分頁編輯並跳至分配名單">開啟 ↗</a>
           <button v-if="i === rec.lines.length - 1 && rec.moneyPending" type="button" class="chip chip-pending"
@@ -110,7 +109,6 @@ function markReceived(recordId: string, handle: string, field: 'settle' | 'drops
 .grand-list dt { color: var(--text-muted); }
 .grand-list dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .open-btn { flex: none; text-decoration: none; }
-.cart-note { cursor: default; }
 .total-line { padding-top: 10px; }
 .total-line .line-text { font-weight: 650; }
 </style>
