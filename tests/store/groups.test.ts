@@ -9,6 +9,7 @@ import {
   countRecordsIn,
   applyMagicRoster,
   leaderFeeEnabled,
+  toggleRegular,
   DEFAULT_ROSTER_URL,
   type DcGroup,
 } from '#src/store/groups'
@@ -245,5 +246,28 @@ describe('辛苦費開關', () => {
   it('明確關閉才是關閉', () => {
     expect(leaderFeeEnabled(group({ enableLeaderFee: false }))).toBe(false)
     expect(leaderFeeEnabled(group({ enableLeaderFee: true }))).toBe(true)
+  })
+})
+
+describe('常駐頻道標記', () => {
+  const two = (): DcGroup[] => [group({
+    channels: [{ id: 'tt', name: '天團', webhookUrl: '' }, { id: 'wt', name: '歪團', webhookUrl: '' }],
+  })]
+
+  it('一個人可以標好幾個頻道，再按一次拿掉', () => {
+    let gs = toggleRegular(two(), 'g1', 'tt', '@a')
+    gs = toggleRegular(gs, 'g1', 'wt', '@a')
+    expect(gs[0].channels.map((c) => c.regulars)).toEqual([['@a'], ['@a']])
+    gs = toggleRegular(gs, 'g1', 'tt', '@a')
+    expect(gs[0].channels[0].regulars).toBeUndefined()
+    expect(gs[0].channels[1].regulars).toEqual(['@a'])
+  })
+
+  it('存檔讀回來標記還在', () => {
+    const stored = toggleRegular(two(), 'g1', 'wt', '@b')
+    const [g] = migrateGroups({
+      stored, hasLegacy: false, legacyWebhook: '', legacyRoster: [], legacySource: { mode: 'default' },
+    })
+    expect(g.channels[1].regulars).toEqual(['@b'])
   })
 })

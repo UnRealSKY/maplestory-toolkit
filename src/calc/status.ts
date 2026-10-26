@@ -1,8 +1,10 @@
 import type { LootRecord } from '../types'
+import { awaitingSale } from './distribution'
 
-// 是否全數賣出：沒有「待售」項目（售出/不計入皆視為已處理）
+// 是否全數賣出：沒有還要賣的項目（售出/不計入、均分後沒剩的都算處理完）
 export function allSold(r: LootRecord): boolean {
-  return r.lootItems.length > 0 && !r.lootItems.some((it) => it.status === 'cart')
+  const n = r.members.length
+  return r.lootItems.length > 0 && !r.lootItems.some((it) => awaitingSale(it, n))
 }
 
 // 是否已把錢交給所有團員：所有團員皆已結清

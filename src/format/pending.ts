@@ -1,6 +1,6 @@
 import type { LootRecord } from '../types'
 import { memberDists, distSummary, summaryMath, distLine, splitDropShares, dropsSuffix, dropsList, type DropShare } from './dist'
-import type { DistOptions } from '../calc/distribution'
+import { awaitingSale, type DistOptions } from '../calc/distribution'
 
 export interface PendingRecordDetail {
   recordId: string
@@ -43,7 +43,7 @@ export function pendingBlocks(
   const dropTotals = new Map<string, Map<string, number>>()
   for (const r of [...records].sort(byDateAsc)) {
     if (r.shelved) continue // 擱置中：暫不列入統計
-    if (r.lootItems.some((it) => it.status === 'cart')) continue // 還有待售：金額還沒定，賣完才列入
+    if (r.lootItems.some((it) => awaitingSale(it, r.members.length))) continue // 還有待售：金額還沒定，賣完才列入
     const opts = optionsFor?.(r.groupId)
     const shares = splitDropShares(r)
     const { base } = distSummary(r, opts)

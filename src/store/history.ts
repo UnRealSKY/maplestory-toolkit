@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import type { ComputedRef } from 'vue'
 import { useRecordsStore } from './records'
-import { rosterHandlesIn, rosterLoading, groupOf } from './groups'
+import { rosterHandlesIn, rosterLoading, groupOf, regularsIn } from './groups'
 import { sharedItemNames, sharedItemsLoading } from './sharedItems'
 
 function uniqueByFrequency(values: string[]): string[] {
@@ -18,7 +18,7 @@ export interface PriceSuggestion {
   date: string
 }
 
-export function useHistory(groupId?: () => string | undefined) {
+export function useHistory(groupId?: () => string | undefined, channelId?: () => string | undefined) {
   const store = useRecordsStore()
 
   // 建議 = 共用品名清單 ∪ 本機歷史品名（共用清單優先列前）
@@ -29,17 +29,19 @@ export function useHistory(groupId?: () => string | undefined) {
     ]),
   )
 
-  // 建議 = 該群名冊 handle ∪ 該群歷史 handle（名冊優先列前）。
+  // 建議 = 該群名冊 handle ∪ 該群歷史 handle（名冊優先列前），常駐這個頻道的人再提到最前面。
   // 人是分群的：別團的團員不該出現在這團的建議裡。歸屬用 groupOf 正規化，
   // 沒有 groupId 的舊紀錄跟著第一個群組走。
   const handles: ComputedRef<string[]> = computed(() => {
     const id = groupOf(groupId?.())?.id
-    return uniqueByFrequency([
+    const all = uniqueByFrequency([
       ...rosterHandlesIn(groupId?.()),
       ...store.records
         .filter((r) => groupOf(r.groupId)?.id === id)
         .flatMap((r) => r.members.map((m) => m.handle)),
     ])
+    const regulars = new Set(regularsIn(groupId?.(), channelId?.()))
+    return [...all.filter((h) => regulars.has(h)), ...all.filter((h) => !regulars.has(h))]
   })
 
   const bosses: ComputedRef<string[]> = computed(() =>

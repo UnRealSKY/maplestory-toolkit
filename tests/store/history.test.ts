@@ -140,3 +140,27 @@ describe('handle 建議依群組分開', () => {
     expect(useHistory(() => 'g2').handles.value).not.toContain('@legacy')
   })
 })
+
+describe('常駐頻道排前面', () => {
+  function seedChannels() {
+    useGroups().groups.value = [{
+      id: 's1', name: '贖罪券', rosterMode: 'local',
+      roster: ['@a', '@b', '@c'].map((h) => ({ discordHandle: h, discordNickName: '' })),
+      channels: [
+        { id: 'tt', name: '天團', webhookUrl: '', regulars: ['@c'] },
+        { id: 'wt', name: '歪團', webhookUrl: '', regulars: ['@b', '@a'] },
+      ],
+    }]
+  }
+
+  it('填哪個頻道的紀錄，常駐那個頻道的人就排最前面，其他人照原本順序', () => {
+    seedChannels()
+    expect(useHistory(() => 's1', () => 'tt').handles.value).toEqual(['@c', '@a', '@b'])
+    expect(useHistory(() => 's1', () => 'wt').handles.value).toEqual(['@a', '@b', '@c'])
+  })
+
+  it('沒綁頻道的紀錄看該伺服器第一個頻道', () => {
+    seedChannels()
+    expect(useHistory(() => 's1').handles.value[0]).toBe('@c')
+  })
+})

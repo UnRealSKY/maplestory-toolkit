@@ -1,5 +1,4 @@
 import type { LootRecord, Member } from '../types'
-import { perMember } from '../calc/splitDrops'
 import {
   teamTotal,
   leaderFee,
@@ -7,6 +6,7 @@ import {
   computeIncomes,
   memberConsignmentTotal,
   roundDisplay,
+  lootSplit,
   type DistOptions,
 } from '../calc/distribution'
 
@@ -100,13 +100,13 @@ export interface DropShare {
   each: number // 每人幾個
 }
 
-// 這筆紀錄每人分到的實物。除不盡的項目略過——它們在區塊那邊已經標了無法均分，發佈也會被擋
+// 這筆紀錄每人分到的實物：總表勾了均分、而且夠每人至少一個的項目
 export function splitDropShares(record: LootRecord): DropShare[] {
   const n = record.members.length
   const out: DropShare[] = []
-  for (const d of record.splitDrops ?? []) {
-    const each = perMember(d.qty, n)
-    if (each != null) out.push({ name: d.name, each })
+  for (const it of record.lootItems) {
+    const { each } = lootSplit(it, n)
+    if (each > 0) out.push({ name: it.name, each })
   }
   return out
 }

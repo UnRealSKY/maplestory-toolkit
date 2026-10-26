@@ -9,6 +9,7 @@ import {
   deleteGroup,
   createChannel,
   patchChannel,
+  toggleRegularIn,
   deleteChannel,
   moveGroup,
   moveChannelTo,
@@ -404,6 +405,7 @@ async function copyJson(key: 'roster' | 'items') {
           <table>
             <thead><tr>
               <th>Discord 帳號</th><th>Discord 顯示名</th><th>自訂別名</th><th>Discord 使用者 ID</th>
+              <th title="填這些頻道的紀錄時，他會排在團員建議的最前面">常駐頻道</th>
               <th v-if="current.rosterMode === 'local'"></th>
             </tr></thead>
             <tbody>
@@ -417,8 +419,6 @@ async function copyJson(key: 'roster' | 'items') {
                     @input="editRoster(i, { alias: ($event.target as HTMLInputElement).value || undefined })" /></td>
                   <td><input :value="e.discordId ?? ''" placeholder="（選填，真 mention 用）"
                     @input="editRoster(i, { discordId: ($event.target as HTMLInputElement).value || undefined })" /></td>
-                  <td><button type="button" class="btn btn-icon btn-danger" title="移除"
-                    @click="removeRosterRow(i)">✕</button></td>
                 </template>
                 <template v-else>
                   <td>{{ e.discordHandle }}</td>
@@ -426,6 +426,14 @@ async function copyJson(key: 'roster' | 'items') {
                   <td :class="{ muted: !e.alias }">{{ e.alias || '—' }}</td>
                   <td class="muted">{{ e.discordId ?? '—' }}</td>
                 </template>
+                <td class="regular-cell">
+                  <button v-for="c in current.channels" :key="c.id" type="button" class="chip"
+                    :class="c.regulars?.includes(e.discordHandle) ? 'chip-ok' : 'chip-struck'"
+                    :disabled="!e.discordHandle" :aria-pressed="!!c.regulars?.includes(e.discordHandle)"
+                    @click="toggleRegularIn(current.id, c.id, e.discordHandle)">#{{ c.name }}</button>
+                </td>
+                <td v-if="current.rosterMode === 'local'"><button type="button" class="btn btn-icon btn-danger" title="移除"
+                  @click="removeRosterRow(i)">✕</button></td>
               </tr>
             </tbody>
           </table>
@@ -500,9 +508,7 @@ async function copyJson(key: 'roster' | 'items') {
 .channel-row .channel-hook { font-family: var(--mono); font-size: 13px; min-width: 0; }
 .channel-row .btn { flex: none; }
 .channel-note { grid-column: 1 / -1; margin: 0; }
-.drag-handle { cursor: grab; color: var(--text-muted); user-select: none; font-size: 16px; padding: 0 2px; }
 .channel-row:active .drag-handle { cursor: grabbing; }
-.drop-target { outline: 2px dashed var(--primary); outline-offset: 2px; }
 .channel-remove:disabled { opacity: .4; cursor: not-allowed; }
 @media (max-width: 720px) { .channel-row { grid-template-columns: auto 1fr; } .channel-row .channel-hook { grid-column: 1 / -1; } }
 .hook-note { margin: 10px 0 0; font-size: 12.5px; }
@@ -510,6 +516,8 @@ async function copyJson(key: 'roster' | 'items') {
 .toggle-row input { width: auto; }
 
 .roster-head { margin-top: 22px; }
+.regular-cell { white-space: nowrap; }
+.regular-cell .chip + .chip { margin-left: 4px; }
 .mode-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .url-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .url-row input { font-family: var(--mono); font-size: 13px; }

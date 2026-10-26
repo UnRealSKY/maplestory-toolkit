@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LootItem, LootStatus } from '../types'
-import { itemNet } from '../calc/distribution'
+import { itemNet, lootSplit } from '../calc/distribution'
 import { useHistory } from '../store/history'
 import AutocompleteInput from './AutocompleteInput.vue'
 
-const props = defineProps<{ modelValue: LootItem }>()
-const emit = defineEmits<{ 'update:modelValue': [v: LootItem]; remove: [] }>()
+const props = defineProps<{ modelValue: LootItem; taken: string[]; memberCount: number }>()
+const emit = defineEmits<{ 'update:modelValue': [v: LootItem]; remove: []; grab: [e: DragEvent] }>()
 
 const history = useHistory()
+// 別列已用過的品名不列出
+const nameSuggestions = computed(() => history.itemNames.value.filter((n) => !props.taken.includes(n)))
 const STATUS_CYCLE: LootStatus[] = ['cart', 'ok', 'struck']
 const STATUS_META: Record<LootStatus, { cls: string; label: string }> = {
   cart: { cls: 'chip-cart', label: '🛒 待售' },
@@ -33,7 +35,14 @@ function cycleStatus() {
   }
   patch(part)
 }
-const net = computed(() => itemNet(props.modelValue))
+const net = computed(() => itemNet(props.modelValue, props.memberCount))
+// 勾了均分時旁邊寫怎麼拆
+const splitText = computed(() => {
+  if (!props.modelValue.split) return ''
+  if (props.memberCount <= 0) return '先加團員'
+  const { each, sell } = lootSplit(props.modelValue, props.memberCount)
+  return sell > 0 ? `每人 ${each}・賣 ${sell}` : `每人 ${each}`
+})
 const priceHints = computed(() =>
   history.priceSuggestions(props.modelValue.name).map((p) => `${p.price}（${p.date}）`),
 )
@@ -41,6 +50,7 @@ const priceHints = computed(() =>
 
 <template>
   <tr>
+    <td class="drag-cell"><span class="drag-handle" draggable="true" title="拖拉排序" @dragstart="emit('grab', $event)">⠿</span></td>
     <td>
       <button type="button" class="chip" :class="STATUS_META[modelValue.status].cls" @click="cycleStatus">
         {{ STATUS_META[modelValue.status].label }}
@@ -49,7 +59,7 @@ const priceHints = computed(() =>
     <td class="name-cell">
       <AutocompleteInput
         :model-value="modelValue.name"
-        :suggestions="history.itemNames.value"
+        :suggestions="nameSuggestions"
         :loading="history.itemNamesLoading.value"
         placeholder="品名"
         fuzzy
@@ -65,6 +75,13 @@ const priceHints = computed(() =>
     <td>
       <input type="number" class="cell-num sm" :value="modelValue.qty ?? ''" placeholder="數量"
         @input="patch({ qty: ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value) })" />
+    </td>
+    <td class="split-cell">
+      <label class="split-toggle">
+        <input type="checkbox" :checked="!!modelValue.split"
+          @change="patch({ split: ($event.target as HTMLInputElement).checked || undefined })" />
+        <span v-if="splitText" class="split-text">{{ splitText }}</span>
+      </label>
     </td>
     <td>
       <input type="number" class="cell-num" :value="modelValue.scissorUnitPrice ?? ''" placeholder="剪刀價"
@@ -89,4 +106,7 @@ const priceHints = computed(() =>
 .cell-num.sm { width: 4.5em; }
 .cell-note { min-width: 110px; }
 .net { font-weight: 650; white-space: nowrap; }
+.split-cell { white-space: nowrap; }
+.split-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.split-text { font-size: 12.5px; color: var(--text-muted); }
 </style>

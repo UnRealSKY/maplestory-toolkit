@@ -1,8 +1,11 @@
 import type { LootRecord, LootItem, LootStatus, Stream, Consignment, SettleStatus, Member } from '../types'
 
 type Section = 'loot' | 'purchase' | 'stream' | 'consignment' | 'splitDrop' | 'dist' | 'none'
-// 均分行：* 品名xN，後面可能跟著「（無法均分 N 人）」的註記；品名裡可能有 x，取最後一個 xN
+// 舊版主文另有一區「## 掉落物均分區」：* 品名xN，後面可能跟著「（無法均分 N 人）」；品名裡可能有 x，取最後一個 xN。
+// 讀進來轉成總表勾了均分的項目
 const SPLIT_DROP_RE = /^\*\s*(.+)x(\d+)\s*(?:（[^）]*）)?\s*$/
+// 總表項目數量後面的均分註記：（每人x2、賣x2）或（每人x2）；份數是依人數算的，讀回來只記「有勾均分」
+const SPLIT_MARK_RE = /（每人x\d+(?:、賣x\d+)?）/
 
 // 標頭：日期 團名［/ 人數（舊格式，僅供辨識）］［｜ 狀態尾綴（相容 ｜/|/・）］
 const HEADER_RE = /^##\s+(\S+)\s+(.+?)(?:\s*\/\s*(\d+))?\s*(?:[｜|・].*)?$/
@@ -59,7 +62,14 @@ function stripLeadingStatus(s: string): string {
   return s.replace(/^\s*(?::\w+:|[^\s\w一-鿿]+)\s*/, '')
 }
 
-function parseLoot(line: string): LootItem | null {
+function parseLoot(raw: string): LootItem | null {
+  const split = SPLIT_MARK_RE.test(raw)
+  const item = parseLootLine(raw.replace(SPLIT_MARK_RE, ''))
+  if (item && split) item.split = true
+  return item
+}
+
+function parseLootLine(line: string): LootItem | null {
   const struck = line.match(STRUCK_RE)
   if (struck) {
     const inner = stripLeadingStatus(struck[1].trim())
@@ -101,6 +111,7 @@ export function parse(md: string): LootRecord {
   let leaderFeeValue = 0
   let leaderFeeMode: 'percent' | 'fixed' = 'fixed'
   let leaderHandle = ''
+  const oldSplitDrops: Array<{ name: string; qty: number }> = []
 
   for (const raw of md.split('\n')) {
     const line = raw.trimEnd()
@@ -157,7 +168,7 @@ export function parse(md: string): LootRecord {
       }
     } else if (section === 'splitDrop') {
       const m = line.match(SPLIT_DROP_RE)
-      if (m) (record.splitDrops ??= []).push({ name: m[1].trim(), qty: Number(m[2]) })
+      if (m) oldSplitDrops.push({ name: m[1].trim(), qty: Number(m[2]) })
     } else if (section === 'dist') {
       const totalLine = line.match(DIST_TOTAL_RE)
       if (totalLine) {
@@ -200,6 +211,13 @@ export function parse(md: string): LootRecord {
       // 總共行一定在分配行之前，所以這時 fee 已經知道了
       if (fee > 0 && hasFeeTerm(line.match(DIST_EXPR_RE)?.[1] ?? '', fee)) leaderHandle = d[2]
     }
+  }
+
+  // 舊版均分區的項目接在總表最後；當時除不盡發不出去，所以通常都分得完、沒得賣
+  const n = record.members.length
+  for (const d of oldSplitDrops) {
+    const sell = n > 0 ? d.qty % n : d.qty
+    record.lootItems.push({ status: sell > 0 ? 'cart' : 'ok', name: d.name, qty: d.qty, unitPrice: null, split: true })
   }
 
   // 百分比留在算式裡，所以 percent 模式現在讀得回來，不必再降級成 fixed

@@ -1,7 +1,7 @@
-import type { LootRecord } from '../types'
+import type { LootRecord, LootItem } from '../types'
 import { MIGRATION_KEY as VERSION_KEY } from '../storageKeys'
 
-const CURRENT_VERSION = 2
+const CURRENT_VERSION = 3
 
 // v1（2026-08-02）：品名標準化——潛能__%、手攻__%、大師附加、附加奇幻
 const RENAME_V1: Record<string, string> = {
@@ -50,6 +50,21 @@ function migratePearl(records: LootRecord[]): LootRecord[] {
   }))
 }
 
+// v3：「掉落物均分區」併進總表——每筆均分接在總表最後、勾好均分。
+// 當時除不盡發不出去，通常分得完；分不完的餘數變成待售，單價空白等人填
+export function splitDropsToLoot(records: LootRecord[]): LootRecord[] {
+  return records.map((r) => {
+    const { splitDrops, ...rest } = r as LootRecord & { splitDrops?: Array<{ name: string; qty: number; id?: string }> }
+    if (!splitDrops?.length) return splitDrops ? rest : r
+    const n = r.members.length
+    const moved: LootItem[] = splitDrops.map((d) => {
+      const sell = n > 0 ? d.qty % n : d.qty
+      return { status: sell > 0 ? 'cart' : 'ok', name: d.name, qty: d.qty, unitPrice: null, split: true, ...(d.id ? { id: d.id } : {}) }
+    })
+    return { ...rest, lootItems: [...r.lootItems, ...moved] }
+  })
+}
+
 // 一次性資料遷移：跑過即記版本，之後載入不再執行
 export function runMigrations(records: LootRecord[]): {
   records: LootRecord[]
@@ -62,6 +77,7 @@ export function runMigrations(records: LootRecord[]): {
   if (done < 2) {
     migrated = renameItemNames(migratePearl(migrated), { ...RENAME_V2, [PEARL.from]: PEARL.to })
   }
+  if (done < 3) migrated = splitDropsToLoot(migrated)
   localStorage.setItem(VERSION_KEY, String(CURRENT_VERSION))
   return { records: migrated, changed: true }
 }

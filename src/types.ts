@@ -16,6 +16,7 @@ export interface LootItem {
   scissorCount?: number
   scissorUnitPrice?: number
   note?: string
+  split?: boolean // 均分：可整除人數的部分直接分給每個人，餘數照單價賣；人數變了跟著重算
   id?: string
 }
 
@@ -43,14 +44,6 @@ export interface Consignment {
   unitPrice: number
   scissorCount?: number
   scissorUnitPrice?: number
-  id?: string
-}
-
-// 掉落物均分：實物平分給每個人，不是錢——不進任何金額計算。
-// 總數除不盡人數時擋住發佈，讓人先在 DC 商量完再改數字。
-export interface SplitDrop {
-  name: string
-  qty: number              // 總數
   id?: string
 }
 
@@ -103,7 +96,6 @@ export interface LootRecord {
   purchases: Purchase[]
   streams?: Stream[]        // 直播檔連結
   consignments?: Consignment[] // 代售：某團員代賣、手上握著的金額，併入結算
-  splitDrops?: SplitDrop[]     // 掉落物均分：實物平分，不進金額
   shelved?: boolean         // 擱置：暫不列入未領總覽
   dc?: DcBinding            // 已發佈至 DC 論壇串的綁定
   images?: DcImage[]        // 三類截圖（檔案本體在 IndexedDB 或 DC CDN）

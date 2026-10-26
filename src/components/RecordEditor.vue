@@ -6,8 +6,7 @@ import { useHistory } from '../store/history'
 import { aliasOfIn, groupOf, channelOf, webhookFor, useGroups, leaderFeeEnabled } from '../store/groups'
 import { publishOrSync, publishContent, hasImageChanges, dcSyncStatus, ATTACHMENT_LIMIT } from '../dc/publish'
 import { parseMessageLink, isBindingLost, getMessage } from '../dc/webhook'
-import type { LootRecord, LootItem, Member, Purchase, Stream, Consignment, SplitDrop, DcImage, DcImageKind } from '../types'
-import { undividable } from '../calc/splitDrops'
+import type { LootRecord, LootItem, Member, Purchase, Stream, Consignment, DcImage, DcImageKind } from '../types'
 import { filesToImages, hoveredImageKind } from '../images'
 import ImageSection from './ImageSection.vue'
 import LootTable from './LootTable.vue'
@@ -15,14 +14,13 @@ import AutocompleteInput from './AutocompleteInput.vue'
 import PurchaseTable from './PurchaseTable.vue'
 import StreamTable from './StreamTable.vue'
 import ConsignmentTable from './ConsignmentTable.vue'
-import SplitDropTable from './SplitDropTable.vue'
 import DistributionPanel from './DistributionPanel.vue'
 import ExportDialog from './ExportDialog.vue'
 import ImportDialog from './ImportDialog.vue'
 
 const route = useRoute()
 const store = useRecordsStore()
-const history = useHistory(() => record.value?.groupId)
+const history = useHistory(() => record.value?.groupId, () => record.value?.channelId)
 
 const record = computed<LootRecord | undefined>(() => store.get(route.params.id as string))
 
@@ -76,14 +74,12 @@ function ensureIds() {
   if (!r) return
   const streams = r.streams ?? []
   const consignments = r.consignments ?? []
-  const splitDrops = r.splitDrops ?? []
   const needs =
     r.lootItems.some((it) => !it.id) ||
     r.members.some((m) => !m.id) ||
     r.purchases.some((p) => !p.id) ||
     streams.some((s) => !s.id) ||
-    consignments.some((c) => !c.id) ||
-    splitDrops.some((d) => !d.id)
+    consignments.some((c) => !c.id)
   if (!needs) return
   store.upsert({
     ...r,
@@ -92,7 +88,6 @@ function ensureIds() {
     purchases: r.purchases.map((p) => (p.id ? p : { ...p, id: crypto.randomUUID() })),
     streams: streams.map((s) => (s.id ? s : { ...s, id: crypto.randomUUID() })),
     consignments: consignments.map((c) => (c.id ? c : { ...c, id: crypto.randomUUID() })),
-    splitDrops: splitDrops.map((d) => (d.id ? d : { ...d, id: crypto.randomUUID() })),
   })
 }
 watch(() => route.params.id, ensureIds, { immediate: true })
@@ -250,7 +245,6 @@ function applyImport(parsed: LootRecord) {
     purchases: parsed.purchases,
     streams: parsed.streams ?? [],
     consignments: parsed.consignments ?? [],
-    splitDrops: parsed.splitDrops ?? [],
   })
   ensureIds() // 為剛匯入的資料列補上穩定 id（迴圈安全，手動呼叫）
 }
@@ -269,18 +263,6 @@ function setStreams(streams: Stream[]) {
 function setConsignments(consignments: Consignment[]) {
   patch({ consignments })
 }
-function setSplitDrops(splitDrops: SplitDrop[]) {
-  patch({ splitDrops })
-}
-// 掉落物除不盡就不給發：跟 publishOrSync 裡的擋門同一個判定，這裡只是提早告訴人
-const publishBlock = computed(() => {
-  const r = record.value
-  if (!r) return ''
-  const bad = undividable(r)
-  if (!bad.length) return ''
-  const n = r.members.length
-  return bad.map((d) => `${d.name} ${d.qty} 個無法均分 ${n} 人`).join('；') + '，改好數字再發佈'
-})
 // ---- 圖片（三類：掉落/領錢/外購）----
 function imagesOf(kind: DcImage['kind']): DcImage[] {
   return (record.value?.images ?? []).filter((i) => i.kind === kind)
@@ -436,7 +418,7 @@ function toggleDropsSettle(i: number) {
         {{ record.dc ? '換綁貼文' : '綁定貼文' }}
       </button>
       <button type="button" class="btn btn-sm publish-btn" :class="`publish-${publishState}`"
-        :disabled="publishState === 'busy' || !!publishBlock"
+        :disabled="publishState === 'busy'"
         :title="record.dc ? `上次同步 ${record.dc.lastSyncAt ? fmtSync(record.dc.lastSyncAt) : '—'}` : '建立論壇貼文（討論串標題建立後不可改）'"
         @click="publishToDc">
         <span v-if="publishState === 'busy'" class="spinner" aria-hidden="true" />
@@ -449,7 +431,6 @@ function toggleDropsSettle(i: number) {
       <button type="button" class="btn btn-primary btn-sm" @click="showExport = true">複製回 DC</button>
     </div>
     <p v-if="publishError" class="alert alert-warn">{{ publishError }}</p>
-    <p v-else-if="publishBlock" class="alert alert-warn">{{ publishBlock }}</p>
 
     <div class="card">
       <div class="section-head"><h3>基本資料</h3></div>
@@ -534,10 +515,7 @@ function toggleDropsSettle(i: number) {
       </ul>
     </div>
 
-    <!-- 均分放最前面：打完先分實物，賣的錢是之後的事 -->
-    <SplitDropTable :model-value="record.splitDrops ?? []" :member-count="record.members.length"
-      :group-id="record.groupId" @update:model-value="setSplitDrops" />
-    <LootTable :model-value="record.lootItems" @update:model-value="setLootItems" />
+    <LootTable :model-value="record.lootItems" :member-count="record.members.length" @update:model-value="setLootItems" />
     <PurchaseTable :model-value="record.purchases" :members="record.members" :group-id="record.groupId"
       @update:model-value="setPurchases" />
     <StreamTable :model-value="record.streams ?? []" @update:model-value="setStreams" />

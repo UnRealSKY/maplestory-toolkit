@@ -134,7 +134,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.app { max-width: 980px; margin: 0 auto; padding: 0 20px 72px; }
+.app { max-width: 1200px; margin: 0 auto; padding: 0 20px 72px; }
 
 /* ---- App bar ---- */
 .appbar {
@@ -261,6 +261,12 @@ button { font-family: inherit; }
 .chip-cart { background: var(--info-soft); color: var(--info); }
 .chip-struck { background: #f3f4f6; color: #9ca3af; }
 .chip-pending { background: var(--warn-soft); color: var(--warn); }
+
+/* ---- 拖拉排序 ---- */
+.drag-handle { cursor: grab; color: var(--text-muted); user-select: none; font-size: 16px; padding: 0 2px; }
+.drag-handle:active { cursor: grabbing; }
+.drag-cell { width: 1%; padding-right: 0; }
+.drop-target { outline: 2px dashed var(--primary); outline-offset: 2px; }
 
 /* ---- Alerts ---- */
 .alert { padding: 9px 13px; border-radius: var(--radius-sm); font-size: 13.5px; margin: 0 0 14px; }

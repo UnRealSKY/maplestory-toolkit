@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { renameItemNames, runMigrations } from '#src/store/migrations'
+import { renameItemNames, runMigrations, splitDropsToLoot } from '#src/store/migrations'
 import type { LootRecord } from '#src/types'
 
 function makeRecord(over: Partial<LootRecord>): LootRecord {
@@ -83,5 +83,29 @@ describe('runMigrations', () => {
     ])
     expect(again.changed).toBe(false)
     expect(again.records[0].lootItems[0].name).toBe('潛在70%')
+  })
+})
+
+describe('splitDropsToLoot（掉落物均分區併進總表）', () => {
+  it('每筆均分接在總表最後、勾好均分；分得完是售出，分不完的是待售', () => {
+    const r = {
+      ...makeRecord({
+        members: ['@a', '@b', '@c', '@d'].map((handle) => ({ handle, settle: 'pending' as const })),
+        lootItems: [{ status: 'ok', name: '道具', qty: 1, unitPrice: 100 }],
+      }),
+      splitDrops: [{ name: '星星碎片', qty: 8, id: 's1' }, { name: '魔法石', qty: 6 }],
+    }
+    const [out] = splitDropsToLoot([r])
+    expect(out.lootItems).toEqual([
+      { status: 'ok', name: '道具', qty: 1, unitPrice: 100 },
+      { status: 'ok', name: '星星碎片', qty: 8, unitPrice: null, split: true, id: 's1' },
+      { status: 'cart', name: '魔法石', qty: 6, unitPrice: null, split: true },
+    ])
+    expect('splitDrops' in out).toBe(false)
+  })
+
+  it('沒有均分的紀錄原樣', () => {
+    const r = makeRecord({})
+    expect(splitDropsToLoot([r])[0]).toBe(r)
   })
 })

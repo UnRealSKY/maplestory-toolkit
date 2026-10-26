@@ -1,21 +1,29 @@
 import type { LootRecord, LootItem, SettleStatus } from '../types'
 import { memberDists, summaryLine, distLine, splitDropShares, dropsList } from './dist'
-import { perMember } from '../calc/splitDrops'
-import type { DistOptions } from '../calc/distribution'
+import { lootSplit, awaitingSale, type DistOptions } from '../calc/distribution'
 
-function lootLine(it: LootItem): string {
+// 勾了均分：數量後面註明每人幾個、賣幾個（沒剩就不寫賣），金額只算賣的那幾個
+function splitMark(it: LootItem, n: number): string {
+  if (!it.split) return ''
+  const { each, sell } = lootSplit(it, n)
+  return sell > 0 ? `（每人x${each}、賣x${sell}）` : `（每人x${each}）`
+}
+
+function lootLine(it: LootItem, n: number): string {
   const q = it.qty ?? ''
+  const mark = splitMark(it, n)
   if (it.status === 'struck') {
     const notePart = it.note ? `: ${it.note}` : ''
-    return `* ~~:heavy_multiplication_x: ${it.name}x${q}${notePart}~~`
+    return `* ~~:heavy_multiplication_x: ${it.name}x${q}${mark}${notePart}~~`
   }
   const emoji = it.status === 'ok' ? ':ok:' : ':shopping_cart:'
   // 未填金額輸出 ?（未知），不是 0
-  let price = `${it.unitPrice ?? '?'}x${q}`
+  const sellQty = it.split ? lootSplit(it, n).sell : q
+  let price = `${it.unitPrice ?? '?'}x${sellQty}`
   if (it.scissorCount) {
     price += ` - ${it.scissorUnitPrice ?? '?'}(剪刀)x${it.scissorCount}`
   }
-  return `* ${emoji} ${it.name}x${q}: ${price}`
+  return `* ${emoji} ${it.name}x${q}${mark}: ${price}`
 }
 
 function settleEmoji(s: SettleStatus): string {
@@ -26,7 +34,7 @@ function settleEmoji(s: SettleStatus): string {
 // 兩者皆歸零＝全結案，顯示單一 :ballot_box_with_check:。
 // webhook 改不了討論串標題與 tag，會變動的狀態放內文標題行、同步時更新
 function statusSuffix(record: LootRecord): string {
-  const cartCount = record.lootItems.filter((it) => it.status === 'cart').length
+  const cartCount = record.lootItems.filter((it) => awaitingSale(it, record.members.length)).length
   const unsettled = record.members.filter((m) => m.settle === 'pending').length
   const marks: string[] = []
   if (cartCount > 0) marks.push(`:shopping_cart:(${cartCount})`)
@@ -38,7 +46,7 @@ export function serialize(record: LootRecord, opts?: DistOptions): string {
   const lines: string[] = []
   lines.push(`## ${record.date} ${record.boss} ｜ ${statusSuffix(record)}`)
   for (const it of record.lootItems) {
-    lines.push(lootLine(it))
+    lines.push(lootLine(it, record.members.length))
     // 非劃線項目的備註：項目行下方縮排一行（劃線項目維持行內註解）
     if (it.status !== 'struck' && it.note) lines.push(`  ${it.note}`)
   }
@@ -68,17 +76,6 @@ export function serialize(record: LootRecord, opts?: DistOptions): string {
         amt += ` - ${c.scissorUnitPrice ?? '?'}(剪刀)x${c.scissorCount}`
       }
       lines.push(`${c.seller}: ${c.name}x${c.qty} = ${amt}`)
-    }
-  }
-
-  const splitDrops = record.splitDrops ?? []
-  if (splitDrops.length) {
-    lines.push('', '## 掉落物均分區')
-    const n = record.members.length
-    for (const d of splitDrops) {
-      // 除不盡的標出來；發佈會被擋，但「複製回 DC」不擋，複製出去也要看得到問題在哪
-      const note = perMember(d.qty, n) == null ? `（無法均分 ${n} 人）` : ''
-      lines.push(`* ${d.name}x${d.qty}${note}`)
     }
   }
 

@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { pendingBlocks, pendingGrandTotal } from '#src/format/pending'
-import type { LootRecord } from '#src/types'
+import type { LootItem, LootRecord } from '#src/types'
 
 const display = (h: string) => h
+
+// 總表勾了均分的項目（不賣，單價空白）
+const split = (list: Array<{ name: string; qty: number }>): LootItem[] =>
+  list.map((d) => ({ status: 'ok', name: d.name, qty: d.qty, unitPrice: null, split: true }))
 
 function record(id: string, over: Partial<LootRecord>): LootRecord {
   return {
@@ -21,8 +25,7 @@ const r1 = record('雙混', {
     { handle: '@x', settle: 'settled', dropsSettle: 'settled' },
     { handle: '@y', settle: 'settled', dropsSettle: 'settled' },
   ],
-  lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 6151 }],
-  splitDrops: [{ name: '大師附加', qty: 4 }, { name: '可疑附加', qty: 12 }],
+  lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 6151 }, ...split([{ name: '大師附加', qty: 4 }, { name: '可疑附加', qty: 12 }])],
 })
 const r2 = record('雙卡', {
   members: [
@@ -32,8 +35,7 @@ const r2 = record('雙卡', {
     { handle: '@z', settle: 'settled', dropsSettle: 'settled' },
     { handle: '@w', settle: 'settled', dropsSettle: 'settled' },
   ],
-  lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 4000 }],
-  splitDrops: [{ name: '大師附加', qty: 15 }, { name: '可疑附加', qty: 5 }],
+  lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 4000 }, ...split([{ name: '大師附加', qty: 15 }, { name: '可疑附加', qty: 5 }])],
 })
 
 describe('未領總覽最上方的總共未領未付', () => {
@@ -56,7 +58,7 @@ describe('未領總覽最上方的總共未領未付', () => {
   })
 
   it('沒有實物就只有金額', () => {
-    expect(pendingGrandTotal(pendingBlocks([{ ...r1, splitDrops: undefined }], display))).toEqual({ total: 3076, drops: [] })
+    expect(pendingGrandTotal(pendingBlocks([{ ...r1, lootItems: r1.lootItems.slice(0, 1) }], display))).toEqual({ total: 3076, drops: [] })
   })
 
   it('沒有任何未領', () => {

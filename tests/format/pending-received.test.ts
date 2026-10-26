@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { pendingBlocks } from '#src/format/pending'
-import type { LootRecord, Member } from '#src/types'
+import type { LootItem, LootRecord, Member } from '#src/types'
 
 const display = (h: string) => h
+
+// 總表勾了均分的項目（不賣，單價空白）
+const split = (list: Array<{ name: string; qty: number }>): LootItem[] =>
+  list.map((d) => ({ status: 'ok', name: d.name, qty: d.qty, unitPrice: null, split: true }))
 
 function record(a: Partial<Member>, over: Partial<LootRecord> = {}): LootRecord {
   return {
@@ -13,9 +17,8 @@ function record(a: Partial<Member>, over: Partial<LootRecord> = {}): LootRecord 
       { handle: '@c', settle: 'settled', dropsSettle: 'settled' },
       { handle: '@d', settle: 'settled', dropsSettle: 'settled' },
     ],
-    lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 6151 }],
+    lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 6151 }, ...split([{ name: '大師附加', qty: 4 }, { name: '可疑附加', qty: 12 }])],
     purchases: [],
-    splitDrops: [{ name: '大師附加', qty: 4 }, { name: '可疑附加', qty: 12 }],
     createdAt: '', updatedAt: '',
     ...over,
   }
@@ -55,9 +58,9 @@ describe('未領總覽：錢與實物各自領', () => {
   })
 
   it('沒有可分實物的場次只看錢：錢領了就消失，dropsSettle 不影響', () => {
-    const noDrops = record({}, { splitDrops: undefined })
+    const noDrops = record({}, { lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 6151 }] })
     expect(pendingBlocks([noDrops], display)[0].records[0]).toMatchObject({ moneyPending: true, dropsPending: false })
-    expect(pendingBlocks([record({ settle: 'settled' }, { splitDrops: undefined })], display)).toEqual([])
+    expect(pendingBlocks([record({ settle: 'settled' }, { lootItems: [{ status: 'ok', name: 'x', qty: 1, unitPrice: 6151 }] })], display)).toEqual([])
   })
 
   it('跨場次：總計只加還沒領的錢與實物', () => {

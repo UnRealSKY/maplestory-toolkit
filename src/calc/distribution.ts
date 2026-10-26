@@ -1,14 +1,29 @@
 import type { LootItem, Purchase, Consignment, LootRecord } from '../types'
 
-export function itemNet(item: LootItem): number {
+// 總表勾「均分」的項目怎麼拆：每人 each 個、共 split 個直接分，剩下 sell 個照單價賣。
+// 沒勾或還沒有團員就是全部拿去賣
+export function lootSplit(item: LootItem, n: number): { each: number; split: number; sell: number } {
+  const qty = item.qty ?? 0
+  if (!item.split || n <= 0) return { each: 0, split: 0, sell: qty }
+  const each = Math.floor(qty / n)
+  return { each, split: each * n, sell: qty - each * n }
+}
+
+// 還要拿去賣的項目：待售，而且扣掉均分之後還有剩
+export function awaitingSale(item: LootItem, n: number): boolean {
+  return item.status === 'cart' && lootSplit(item, n).sell > 0
+}
+
+// n＝團員人數，勾了均分的項目只算賣掉的那幾個
+export function itemNet(item: LootItem, n = 0): number {
   if (item.status === 'struck') return 0
-  const price = (item.unitPrice ?? 0) * (item.qty ?? 0)
+  const price = (item.unitPrice ?? 0) * lootSplit(item, n).sell
   const scissor = (item.scissorUnitPrice ?? 0) * (item.scissorCount ?? 0)
   return price - scissor
 }
 
-export function netTotal(items: LootItem[]): number {
-  return items.reduce((sum, it) => sum + itemNet(it), 0)
+export function netTotal(items: LootItem[], n = 0): number {
+  return items.reduce((sum, it) => sum + itemNet(it, n), 0)
 }
 
 // 團隊總收益＝總表淨額 ＋ 代售淨額。
@@ -16,7 +31,7 @@ export function netTotal(items: LootItem[]): number {
 // 必須先進總額被分掉；他手上那份於結算時扣抵（見 memberConsignmentTotal）。
 export function teamTotal(record: LootRecord): number {
   const consigned = (record.consignments ?? []).reduce((s, c) => s + consignmentValue(c), 0)
-  return netTotal(record.lootItems) + consigned
+  return netTotal(record.lootItems, record.members.length) + consigned
 }
 
 export function purchaseValue(p: Purchase): number {

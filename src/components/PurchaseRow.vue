@@ -7,7 +7,7 @@ import { displayNameIn } from '../store/groups'
 import AutocompleteInput from './AutocompleteInput.vue'
 
 const props = defineProps<{ modelValue: Purchase; memberHandles: string[]; memberCount: number; groupId?: string }>()
-const emit = defineEmits<{ 'update:modelValue': [v: Purchase]; remove: [] }>()
+const emit = defineEmits<{ 'update:modelValue': [v: Purchase]; remove: []; grab: [e: DragEvent] }>()
 const history = useHistory()
 
 function patch(part: Partial<Purchase>) {
@@ -24,6 +24,7 @@ const fullValue = computed(() => purchaseValue(props.modelValue))
 
 <template>
   <tr>
+    <td class="drag-cell"><span class="drag-handle" draggable="true" title="拖拉排序" @dragstart="emit('grab', $event)">⠿</span></td>
     <td class="buyer-cell">
       <select :value="modelValue.buyer"
         @change="patch({ buyer: ($event.target as HTMLSelectElement).value })">

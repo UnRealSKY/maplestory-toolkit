@@ -33,6 +33,7 @@ export interface DcChannel {
   id: string
   name: string
   webhookUrl: string
+  regulars?: string[] // 常駐這個頻道的人（handle）；填這個頻道的紀錄時，團員建議把他們排前面
 }
 
 export interface DcGroup {
@@ -85,7 +86,11 @@ function isChannel(raw: unknown): raw is DcChannel {
 }
 
 function normalizeChannel(c: DcChannel): DcChannel {
-  return { id: c.id, name: c.name, webhookUrl: typeof c.webhookUrl === 'string' ? c.webhookUrl : '' }
+  const regulars = Array.isArray(c.regulars) ? c.regulars.filter((h): h is string => typeof h === 'string' && !!h) : []
+  return {
+    id: c.id, name: c.name, webhookUrl: typeof c.webhookUrl === 'string' ? c.webhookUrl : '',
+    ...(regulars.length ? { regulars } : {}),
+  }
 }
 
 // 「伺服器-頻道」：最後一個「-」前面是伺服器、後面是頻道。沒有「-」就整個是伺服器名，頻道用預設名
@@ -319,6 +324,26 @@ export function channelById(
   )
 }
 
+// 某人有沒有標常駐這個頻道：有就拿掉，沒有就加上
+export function toggleRegular(
+  groups: DcGroup[],
+  groupId: string,
+  channelId: string,
+  handle: string,
+): DcGroup[] {
+  return groups.map((g) => {
+    if (g.id !== groupId) return g
+    const channels = g.channels.map((c) => {
+      if (c.id !== channelId) return c
+      const cur = c.regulars ?? []
+      const regulars = cur.includes(handle) ? cur.filter((h) => h !== handle) : [...cur, handle]
+      const { regulars: _old, ...rest } = c
+      return regulars.length ? { ...rest, regulars } : rest
+    })
+    return { ...g, channels }
+  })
+}
+
 // 綁在某伺服器的紀錄數（含舊紀錄：它們的 groupId 是頻道 id，一樣會找回這個伺服器）
 export function countRecordsIn(
   records: Array<{ groupId?: string; channelId?: string }>,
@@ -436,6 +461,11 @@ export function createChannel(groupId: string, name: string): DcChannel {
   return g.channels[g.channels.length - 1]
 }
 
+export function toggleRegularIn(groupId: string, channelId: string, handle: string): void {
+  groups.value = toggleRegular(groups.value, groupId, channelId, handle)
+  persist()
+}
+
 export function patchChannel(groupId: string, channelId: string, part: Partial<DcChannel>): void {
   groups.value = updateChannel(groups.value, groupId, channelId, part)
   persist()
@@ -505,6 +535,11 @@ export function displayNameIn(groupId: string | undefined, handle: string): stri
 
 export function aliasOfIn(groupId: string | undefined, handle: string): string | undefined {
   return aliasIn(groups.value, groupId, handle)
+}
+
+// 常駐這個頻道的人；沒綁頻道的舊紀錄跟著該伺服器第一個頻道
+export function regularsIn(groupId: string | undefined, channelId: string | undefined): string[] {
+  return channelOf(groupId, channelId)?.regulars ?? []
 }
 
 export function rosterHandlesIn(groupId: string | undefined): string[] {
