@@ -51,6 +51,7 @@ export type Boss = ReflectBoss | CycleBoss | HpBoss | DpsBoss
 export const BOSSES: Boss[] = [
   { id: 'pink-bean', name: '皮卡啾／粉豆', mechanic: 'damage-reflect', reflectDuration: 25, interval: 20, intervalFloat: 3 },
   { id: 'dunas', name: '杜納斯', mechanic: 'damage-reflect', reflectDuration: 20, interval: 25, intervalFloat: 0 },
+  { id: 'hilla', name: '希拉', mechanic: 'damage-reflect', reflectDuration: 15, interval: 70, intervalFloat: 0 },
   {
     id: 'cygnus',
     name: '女皇',
@@ -62,9 +63,9 @@ export const BOSSES: Boss[] = [
       { id: 'seal', name: '鎖潛能', interval: 90 },
       { id: 'zombie', name: '活屍', interval: 60 },
     ],
-    // 低於 11% 回血到 50%；魔消 20 秒擋回血，這期間變豬、黑屋、鎖潛能會斷輸出；
-    // 反盾放了無效、活屍不影響輸出，所以不列。從亮「可以」到魔消生效留 5 秒反應
-    finisher: { hpPercent: 11, blockedBy: ['pig', 'jail', 'seal'], seconds: 20, slack: 5 },
+    // 低於 11% 回血到 50%；魔消擋回血，這期間變豬、黑屋、鎖潛能會斷輸出；
+    // 反盾放了無效、活屍不影響輸出，所以不列
+    finisher: { hpPercent: 11, blockedBy: ['pig', 'jail', 'seal'] },
   },
   {
     id: 'arkarium',

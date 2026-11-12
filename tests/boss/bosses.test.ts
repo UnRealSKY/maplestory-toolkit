@@ -106,7 +106,7 @@ describe('機制模板', () => {
   })
 
   it('bossesOf 取出套用該模板的王', () => {
-    expect(bossesOf('damage-reflect').map((b) => b.id)).toEqual(['pink-bean', 'dunas'])
+    expect(bossesOf('damage-reflect').map((b) => b.id)).toEqual(['pink-bean', 'dunas', 'hilla'])
     expect(bossesOf('cycle').map((b) => b.id)).toEqual(['cygnus'])
   })
 

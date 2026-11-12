@@ -64,14 +64,12 @@ export function upcomingCycleEvents(
   return out.sort((a, b) => a.at - b.at).slice(0, count)
 }
 
-// 「一波」的判斷資料：王血量掉到 hpPercent 以下會回血，隊伍用魔消擋 seconds 秒
-// 全力打完。魔消期間王照常放的機制裡，blockedBy 列的那幾個會斷輸出；slack 是從
-// 畫面亮「可以一波」到魔消真的生效之間的反應餘裕（喊、反應、施放）。
+// 「一波」的判斷資料：王血量掉到 hpPercent 以下會回血，隊伍用魔消擋住回血
+// 全力打完。魔消期間王照常放的機制裡，blockedBy 列的那幾個會斷輸出。
+// 魔消幾秒是玩家的技能，不在王的資料裡，由呼叫端傳入。
 export interface Finisher {
   hpPercent: number
   blockedBy: string[]
-  seconds: number
-  slack: number
 }
 
 export interface FinisherWindow {
@@ -79,7 +77,7 @@ export interface FinisherWindow {
   wait: number
   /**
    * 從窗口開始算，還有幾秒可以下手打一波。
-   * 不是窗口總長——最後那 seconds + slack 秒是魔消要用的，那時候才開始就來不及了。
+   * 不是窗口總長——最後那 seconds 秒是魔消要用的，那時候才開始就來不及了。
    */
   startWithin: number
   /** 等待期間會先觸發的機制名稱，依時間排序、同一個只列一次 */
@@ -88,7 +86,7 @@ export interface FinisherWindow {
 
 // 現在一波下去，魔消段會不會撞到斷輸出的機制。blockedBy 裡有任何一個時鐘沒按過
 // 觸發就回 null——沒依據不能亂說可以。
-// 要乾淨的長度是 seconds + slack：不管魔消在餘裕內哪一刻生效，之後 seconds 秒都得乾淨。
+// 要乾淨的長度是魔消的 seconds 秒。
 // 找法：從現在起算，窗口內撞到機制就把起點移到那個機制的觸發時刻再看一次。
 // 機制剛好在起點觸發不算撞到（放完就乾淨了），剛好在終點觸發算撞到。
 export function finisherWindow(
@@ -96,12 +94,13 @@ export function finisherWindow(
   clocks: Record<string, CycleClock>,
   now: number,
   finisher: Finisher,
+  seconds: number,
 ): FinisherWindow | null {
   const blockers = cycles.filter((c) => finisher.blockedBy.includes(c.id))
   // 資料寫錯（列了不存在的機制）也回 null，不能因為少看一個就說可以
   if (blockers.length !== finisher.blockedBy.length) return null
   if (blockers.some((c) => clocks[c.id] == null || c.interval <= 0)) return null
-  const need = (finisher.seconds + finisher.slack) * 1000
+  const need = seconds * 1000
 
   const nextAt = (c: CycleDef, from: number) => {
     const clock = clocks[c.id]!

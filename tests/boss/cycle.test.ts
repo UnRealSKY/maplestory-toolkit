@@ -109,62 +109,62 @@ describe('一波：魔消段內會不會撞到斷輸出的機制', () => {
     { id: 'seal', name: '鎖潛能', interval: 90 },
     { id: 'zombie', name: '活屍', interval: 60 },
   ]
-  // 魔消 20 秒＋反應寬容 5 秒＝要乾淨的長度 25 秒
-  const FINISHER = { hpPercent: 11, blockedBy: ['pig', 'jail', 'seal'], seconds: 20, slack: 5 }
+  // 魔消 20 秒＝要乾淨的長度 20 秒
+  const FINISHER = { hpPercent: 11, blockedBy: ['pig', 'jail', 'seal'] }
   const all = { 'damage-reflect': T0, pig: T0, jail: T0, seal: T0, zombie: T0 }
 
   it('三個時鐘剛觸發完 → 現在可以，窗口長到變豬觸發為止', () => {
-    expect(finisherWindow(CYCLES, all, T0, FINISHER)).toEqual({
+    expect(finisherWindow(CYCLES, all, T0, FINISHER, 20)).toEqual({
       wait: 0,
-      startWithin: 35, // 變豬在 60 秒後觸發，扣掉魔消 20＋寬容 5
+      startWithin: 40, // 變豬在 60 秒後觸發，扣掉魔消 20
       waitingFor: [],
     })
   })
 
   it('變豬 10 秒後要來 → 等到變豬觸發那一刻，並說在等誰', () => {
-    expect(finisherWindow(CYCLES, all, sec(50), FINISHER)).toEqual({
+    expect(finisherWindow(CYCLES, all, sec(50), FINISHER, 20)).toEqual({
       wait: 10,
-      startWithin: 5, // 變豬觸發後到黑屋／鎖潛能只剩 30 秒，能下手的只有 5 秒
+      startWithin: 10, // 變豬觸發後到黑屋／鎖潛能只剩 30 秒，能下手的只有 10 秒
       waitingFor: ['變豬'],
     })
   })
 
-  it('剛好在邊界：機制在第 25 秒觸發還算撞到，第 26 秒不算', () => {
-    expect(finisherWindow(CYCLES, all, sec(35), FINISHER)!.wait).toBe(25) // 變豬在 60，35+25=60
-    expect(finisherWindow(CYCLES, all, sec(34), FINISHER)!.wait).toBe(0)
+  it('剛好在邊界：機制在第 20 秒觸發還算撞到，第 21 秒不算', () => {
+    expect(finisherWindow(CYCLES, all, sec(40), FINISHER, 20)!.wait).toBe(20) // 變豬在 60，40+20=60
+    expect(finisherWindow(CYCLES, all, sec(39), FINISHER, 20)!.wait).toBe(0)
   })
 
   it('兩個機制同時觸發，兩個都要列出來', () => {
     // 從 70 起：黑屋與鎖潛能都在 90 觸發，等到 90 之後才乾淨
-    expect(finisherWindow(CYCLES, all, sec(70), FINISHER)).toEqual({
+    expect(finisherWindow(CYCLES, all, sec(70), FINISHER, 20)).toEqual({
       wait: 20,
-      startWithin: 5,
+      startWithin: 10,
       waitingFor: ['小黑屋', '鎖潛能'],
     })
   })
 
   it('等待期間連續撞到好幾個，依觸發順序全部列出', () => {
     const clocks = { ...all, jail: sec(-10) } // 黑屋改成在 80 觸發
-    expect(finisherWindow(CYCLES, clocks, sec(50), FINISHER)).toEqual({
+    expect(finisherWindow(CYCLES, clocks, sec(50), FINISHER, 20)).toEqual({
       wait: 40, // 變豬 60 → 黑屋 80 → 鎖潛能 90，到 90 才乾淨
-      startWithin: 5,
+      startWithin: 10,
       waitingFor: ['變豬', '小黑屋', '鎖潛能'],
     })
   })
 
   it('反盾與活屍要來了也不算撞到', () => {
     const clocks = { ...all, pig: sec(30), jail: sec(30), seal: sec(30) }
-    const w = finisherWindow(CYCLES, clocks, sec(60), FINISHER)!
+    const w = finisherWindow(CYCLES, clocks, sec(60), FINISHER, 20)!
     expect(w.wait).toBe(0) // 反盾 80、活屍 60 都落在窗口內，照樣可以
-    expect(w.startWithin).toBe(5) // 變豬在 90 觸發，能下手的只有 5 秒
+    expect(w.startWithin).toBe(10) // 變豬在 90 觸發，能下手的只有 10 秒
   })
 
   it('三個時鐘有任一個沒按過觸發 → 沒依據，回 null', () => {
-    expect(finisherWindow(CYCLES, { ...all, seal: undefined }, T0, FINISHER)).toBeNull()
-    expect(finisherWindow(CYCLES, {}, T0, FINISHER)).toBeNull()
+    expect(finisherWindow(CYCLES, { ...all, seal: undefined }, T0, FINISHER, 20)).toBeNull()
+    expect(finisherWindow(CYCLES, {}, T0, FINISHER, 20)).toBeNull()
   })
 
   it('等待秒數無條件進位', () => {
-    expect(finisherWindow(CYCLES, all, sec(50) - 500, FINISHER)!.wait).toBe(11)
+    expect(finisherWindow(CYCLES, all, sec(50) - 500, FINISHER, 20)!.wait).toBe(11)
   })
 })

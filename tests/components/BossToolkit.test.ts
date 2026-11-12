@@ -260,18 +260,35 @@ describe('BossToolkit 切到循環模板的王（女皇）', () => {
       // 只按變豬：還缺黑屋與鎖潛能，缺誰就只說誰
       await items(w)[1].find('.trigger').trigger('click')
       expect(bar().find('.finisher-verdict').text()).toBe('等待 小黑屋、鎖潛能 觸發')
-      // 三個按齊：接下來 25 秒乾淨，窗口長到變豬 60 秒後觸發為止
+      // 三個按齊：接下來 20 秒乾淨，窗口長到變豬 60 秒後觸發為止
       await items(w)[2].find('.trigger').trigger('click')
       await items(w)[3].find('.trigger').trigger('click')
       expect(bar().classes()).toContain('finisher-go')
-      expect(bar().find('.finisher-verdict').text()).toBe('可以一波（35 秒）')
+      expect(bar().find('.finisher-verdict').text()).toBe('可以一波（40 秒）')
       expect(bar().find('.finisher-note').exists()).toBe(false)
-      // 40 秒後變豬剩 20 秒，落在魔消 20＋寬容 5 之內 → 等到變豬觸發
+      // 40 秒後變豬剩 20 秒，落在魔消 20 秒之內 → 等到變豬觸發
       vi.advanceTimersByTime(40_000)
       await nextTick()
       expect(bar().classes()).toContain('finisher-wait')
       expect(bar().find('.finisher-verdict').text()).toBe('等 20 秒後可以一波')
       expect(bar().find('.finisher-note').text()).toBe('（等 變豬 觸發）')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('一波看的秒數就是參數裡的魔消持續', async () => {
+    vi.useFakeTimers()
+    try {
+      const { w } = await mountToolkit()
+      await pickBoss(queenChip(w))
+      for (const i of [1, 2, 3]) await items(w)[i].find('.trigger').trigger('click')
+      const verdict = () => w.find('.finisher .finisher-verdict').text()
+      expect(verdict()).toBe('可以一波（40 秒）')
+      // 女皇也有參數卡，只有玩家技能，沒有反盾秒數
+      expect(w.findAll('.param-group legend').map((l) => l.text())).toEqual(['玩家技能'])
+      await w.findAll('.dispel-preset')[1].trigger('click') // 幻影 14 秒
+      expect(verdict()).toBe('可以一波（46 秒）')
     } finally {
       vi.useRealTimers()
     }

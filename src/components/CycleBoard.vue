@@ -6,6 +6,7 @@ import { cycleClocks, triggerCycle, nudgeCycle, resetCycles, anyCycleRunning } f
 import { ensureAudio } from '../boss/sound'
 import { fmtTime } from '../boss/anchor'
 import { now, touchNow } from '../boss/clock'
+import { dispelDuration } from '../boss/session'
 import SlotBadge from './SlotBadge.vue'
 
 const props = defineProps<{ boss: CycleBoss }>()
@@ -20,7 +21,7 @@ const running = computed(() => anyCycleRunning(props.boss.cycles))
 
 // 一波的判斷：現在打下去，魔消段會不會撞到斷輸出的機制
 const win = computed(() =>
-  props.boss.finisher ? finisherWindow(props.boss.cycles, clocks, now.value, props.boss.finisher) : null,
+  props.boss.finisher ? finisherWindow(props.boss.cycles, clocks, now.value, props.boss.finisher, dispelDuration.value) : null,
 )
 // 還沒按過觸發、判斷不了的那幾個機制；沒依據時要講清楚缺誰，不然只能乾看
 const finisherMissing = computed(() =>

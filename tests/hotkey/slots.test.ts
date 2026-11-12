@@ -5,7 +5,7 @@ import { bossById } from '#src/boss/bosses'
 describe('slot 對應', () => {
   it('永遠是六格', () => {
     expect(SLOT_COUNT).toBe(6)
-    for (const id of ['pink-bean', 'dunas', 'cygnus', 'arkarium', 'dps']) {
+    for (const id of ['pink-bean', 'dunas', 'hilla', 'cygnus', 'arkarium', 'dps']) {
       expect(slotsOf(bossById(id))).toHaveLength(6)
     }
   })

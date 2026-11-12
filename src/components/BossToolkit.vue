@@ -217,16 +217,18 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
           </li>
         </ul>
       </div>
+    </template>
 
-      <!-- 參數 -->
-      <div class="card">
-        <div class="section-head">
-          <h3>參數</h3>
-          <div class="spacer" />
-          <button v-if="isOverridden" type="button" class="btn btn-sm reset-boss" @click="resetBossParams">
-            還原{{ boss.name }}預設
-          </button>
-        </div>
+    <!-- 參數：反盾王改王的秒數與魔消；有一波判斷的循環王只看魔消秒數 -->
+    <div v-if="reflectOnly || cycleBoss?.finisher" class="card">
+      <div class="section-head">
+        <h3>參數</h3>
+        <div class="spacer" />
+        <button v-if="reflectOnly && isOverridden" type="button" class="btn btn-sm reset-boss" @click="resetBossParams">
+          還原{{ boss.name }}預設
+        </button>
+      </div>
+      <template v-if="reflectOnly">
         <fieldset class="param-group">
           <legend>{{ boss.name }}</legend>
           <div class="param-grid">
@@ -244,23 +246,23 @@ const events = computed(() => upcomingEvents(reflectState.value, params.value, n
             </label>
           </div>
         </fieldset>
-        <fieldset class="param-group">
-          <legend>玩家技能</legend>
-          <!-- 常見職業一鍵填，選中的實心底；自己打別的秒數就兩顆都不亮 -->
-          <div class="dispel-presets" role="group" aria-label="魔消職業">
-            <button v-for="p in DISPEL_PRESETS" :key="p.name" type="button" class="btn btn-sm dispel-preset"
-              :class="{ 'boss-on': dispelSeconds === p.seconds }" :aria-pressed="dispelSeconds === p.seconds"
-              @click="dispelSeconds = p.seconds">{{ p.name }}（{{ p.seconds }}s）</button>
-          </div>
-          <div class="param-grid">
-            <label class="field">
-              <span class="field-label">魔消持續（秒，預設 {{ DEFAULT_DISPEL_DURATION }}）</span>
-              <input v-model.number="dispelSeconds" type="number" min="1" step="1" />
-            </label>
-          </div>
-        </fieldset>
-      </div>
-    </template>
+      </template>
+      <fieldset class="param-group">
+        <legend>玩家技能</legend>
+        <!-- 常見職業一鍵填，選中的實心底；自己打別的秒數就兩顆都不亮 -->
+        <div class="dispel-presets" role="group" aria-label="魔消職業">
+          <button v-for="p in DISPEL_PRESETS" :key="p.name" type="button" class="btn btn-sm dispel-preset"
+            :class="{ 'boss-on': dispelSeconds === p.seconds }" :aria-pressed="dispelSeconds === p.seconds"
+            @click="dispelSeconds = p.seconds">{{ p.name }}（{{ p.seconds }}s）</button>
+        </div>
+        <div class="param-grid">
+          <label class="field">
+            <span class="field-label">魔消持續（秒，預設 {{ DEFAULT_DISPEL_DURATION }}）</span>
+            <input v-model.number="dispelSeconds" type="number" min="1" step="1" />
+          </label>
+        </div>
+      </fieldset>
+    </div>
   </section>
 </template>
 
