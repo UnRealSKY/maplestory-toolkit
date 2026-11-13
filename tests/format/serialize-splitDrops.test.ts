@@ -64,6 +64,16 @@ describe('serialize 總表均分', () => {
     expect(out).toContain('* :ok: @a: 1750\n')
   })
 
+  it('剛好均分完的項目就算存成待售，主文也標 :ok:，而且不寫金額', () => {
+    const r = { ...base, lootItems: [{ status: 'cart' as const, name: '星星碎片', qty: 8, unitPrice: 5000, split: true }] }
+    expect(serialize(r)).toContain('* :ok: 星星碎片x8（每人x2）\n')
+  })
+
+  it('剛好均分完但有剪刀費：金額照寫，剪刀費才扣得到', () => {
+    const r = { ...base, lootItems: [{ status: 'ok' as const, name: '星星碎片', qty: 8, unitPrice: 5000, split: true, scissorUnitPrice: 300, scissorCount: 1 }] }
+    expect(serialize(r)).toContain('* :ok: 星星碎片x8（每人x2）: 5000x0 - 300(剪刀)x1')
+  })
+
   it('標題的待售數只算均分後還有剩的項目', () => {
     const r = { ...base, lootItems: [{ status: 'cart' as const, name: '星星碎片', qty: 8, unitPrice: 5000, split: true }] }
     expect(serialize(r).split('\n')[0]).not.toContain(':shopping_cart:')

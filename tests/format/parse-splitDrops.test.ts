@@ -16,10 +16,10 @@ describe('總表均分：主文格式', () => {
     createdAt: '', updatedAt: '',
   }
 
-  it('數量後面寫每人幾個、賣幾個，金額只算賣的；分得完就不寫賣', () => {
+  it('數量後面寫每人幾個、賣幾個，金額只算賣的；分得完就不寫賣、也不寫金額', () => {
     const out = serialize(base)
     expect(out).toContain('* :ok: 星星碎片x10（每人x2、賣x2）: 5000x2')
-    expect(out).toContain('* :ok: 魔法石x8（每人x2）: ?x0')
+    expect(out).toContain('* :ok: 魔法石x8（每人x2）\n')
     expect(out).not.toContain('## 掉落物均分區')
     // 4000 + 5000x2 = 14000，每人 3500，每人那行接上分到的實物
     expect(out).toContain('* :orange_square: @a: 3500 ｜ :orange_square: 星星碎片x2、魔法石x2')
@@ -29,6 +29,22 @@ describe('總表均分：主文格式', () => {
     const back = parse(serialize(base))
     expect(back.lootItems).toEqual(base.lootItems)
     expect(back.members).toEqual(base.members)
+  })
+
+  it('分得完沒寫金額的那列讀得回來；舊版寫了 ?x0 的也照讀', () => {
+    const md = [
+      '## 2026-09-29 女皇',
+      '* :ok: 星星碎片x8（每人x4）',
+      '* :ok: 魔法石x8（每人x4）: ?x0',
+      '## 分配',
+      '總共: 0 / 2 = 0',
+      '* :ok: @a: 0 ｜ :ok: 星星碎片x4、魔法石x4',
+      '* :ok: @b: 0 ｜ :ok: 星星碎片x4、魔法石x4',
+    ].join('\n')
+    expect(parse(md).lootItems).toEqual([
+      { status: 'ok', name: '星星碎片', qty: 8, unitPrice: null, split: true },
+      { status: 'ok', name: '魔法石', qty: 8, unitPrice: null, split: true },
+    ])
   })
 
   it('｜後面的狀態 token 讀成物領了沒；短碼與圖案都認', () => {

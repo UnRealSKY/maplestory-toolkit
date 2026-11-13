@@ -30,6 +30,18 @@ describe('AutocompleteInput', () => {
     expect(wrapper.emitted('select')![0]).toEqual(['附加大師'])
   })
 
+  it('tagFor：有小標的建議後面多一個標記，選取仍存原 value', async () => {
+    const wrapper = mount(AutocompleteInput, {
+      props: { modelValue: '', suggestions: ['@a', '@b'], tagFor: (v: string) => (v === '@a' ? '常駐' : '') },
+    })
+    await wrapper.find('input').trigger('focus')
+    const options = wrapper.findAll('.suggestion')
+    expect(options[0].find('.suggestion-tag').text()).toBe('常駐')
+    expect(options[1].find('.suggestion-tag').exists()).toBe(false)
+    await options[0].trigger('mousedown')
+    expect(wrapper.emitted('select')![0]).toEqual(['@a'])
+  })
+
   it('labelFor：下拉顯示別名並可按別名過濾，選取仍存原 value', async () => {
     const wrapper = mount(AutocompleteInput, {
       props: {

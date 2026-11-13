@@ -75,3 +75,21 @@ describe('總表勾均分', () => {
     expect(next[0].split).toBeUndefined()
   })
 })
+
+describe('剛好均分完的項目不是待售', () => {
+  it('狀態顯示「均分」，不能點', async () => {
+    const even: LootItem = { status: 'cart', name: '星星碎片', qty: 8, unitPrice: 5000, split: true, id: 'a' }
+    const w = mount(LootTable, { props: { memberCount: 4, modelValue: [even] } })
+    const chip = w.find('tbody tr .chip')
+    expect(chip.text()).toBe('✓ 均分')
+    expect(chip.element.tagName).toBe('SPAN')
+    await chip.trigger('click')
+    expect(w.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('有餘數要賣的照樣顯示待售', () => {
+    const rest: LootItem = { status: 'cart', name: '星星碎片', qty: 10, unitPrice: 5000, split: true, id: 'a' }
+    const w = mount(LootTable, { props: { memberCount: 4, modelValue: [rest] } })
+    expect(w.find('tbody tr .chip').text()).toBe('🛒 待售')
+  })
+})

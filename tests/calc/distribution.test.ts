@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { itemNet, netTotal, teamTotal, leaderFee, serviceFee, purchaseValue, memberPurchaseTotal, computeIncomes, consignmentValue, memberConsignmentTotal } from '#src/calc/distribution'
+import { itemNet, netTotal, teamTotal, leaderFee, serviceFee, purchaseValue, memberPurchaseTotal, computeIncomes, consignmentValue, memberConsignmentTotal, awaitingSale } from '#src/calc/distribution'
 import type { LootItem, LootRecord } from '#src/types'
 
 const ok = (over: Partial<LootItem>): LootItem =>
@@ -311,5 +311,17 @@ describe('手續費與辛苦費並列', () => {
     const r = computeIncomes(base, opts)
     expect(r[0].income).toBe(1940) // (10000 − 300) / 5，沒有辛苦費
     expect(r[0].fee).toBe(0)
+  })
+})
+
+describe('awaitingSale', () => {
+  it('待售但數量還沒填：還是待售', () => {
+    expect(awaitingSale({ status: 'cart', name: 'a', qty: null, unitPrice: null }, 4)).toBe(true)
+  })
+  it('勾均分剛好分完：不是待售', () => {
+    expect(awaitingSale({ status: 'cart', name: 'a', qty: 8, unitPrice: null, split: true }, 4)).toBe(false)
+  })
+  it('勾均分還有餘數：待售', () => {
+    expect(awaitingSale({ status: 'cart', name: 'a', qty: 9, unitPrice: null, split: true }, 4)).toBe(true)
   })
 })

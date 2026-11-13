@@ -7,6 +7,7 @@ const props = defineProps<{
   suggestions: string[]
   placeholder?: string
   labelFor?: (value: string) => string  // 下拉顯示文字（如別名），選取仍存原 value
+  tagFor?: (value: string) => string    // 下拉文字後面的小標（如「常駐」）；空字串＝不標
   fuzzy?: boolean                       // 改用模糊比對（品名搜尋用）
   loading?: boolean                     // 名單背景載入中：無建議時顯示載入提示列
 }>()
@@ -90,7 +91,7 @@ function choose(s: string) {
         class="suggestion"
         @mousedown.prevent="choose(s)"
       >
-        {{ label(s) }}
+        {{ label(s) }}<span v-if="tagFor?.(s)" class="chip chip-ok suggestion-tag">{{ tagFor(s) }}</span>
       </li>
       <li v-if="loading && !filtered.length" class="loading-row">⋯ 名單載入中</li>
     </ul>
@@ -107,6 +108,7 @@ function choose(s: string) {
   max-height: 240px; overflow-y: auto; min-width: 140px;
 }
 .suggestion { padding: 6px 10px; cursor: pointer; border-radius: 6px; font-size: 14px; white-space: nowrap; }
+.suggestion-tag { margin-left: 6px; padding: 1px 7px; font-size: 11.5px; }
 .suggestion:hover { background: var(--primary-soft); color: var(--primary-hover); }
 .loading-row { padding: 6px 10px; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
 </style>

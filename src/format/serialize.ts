@@ -1,6 +1,6 @@
 import type { LootRecord, LootItem, SettleStatus } from '../types'
 import { memberDists, summaryLine, distLine, splitDropShares, dropsList } from './dist'
-import { lootSplit, awaitingSale, type DistOptions } from '../calc/distribution'
+import { lootSplit, awaitingSale, splitsEvenly, type DistOptions } from '../calc/distribution'
 
 // 勾了均分：數量後面註明每人幾個、賣幾個（沒剩就不寫賣），金額只算賣的那幾個
 function splitMark(it: LootItem, n: number): string {
@@ -16,7 +16,10 @@ function lootLine(it: LootItem, n: number): string {
     const notePart = it.note ? `: ${it.note}` : ''
     return `* ~~:heavy_multiplication_x: ${it.name}x${q}${mark}${notePart}~~`
   }
-  const emoji = it.status === 'ok' ? ':ok:' : ':shopping_cart:'
+  const evenly = splitsEvenly(it, n)
+  // 剛好均分完的沒東西要賣：不標待售，也不寫金額（有剪刀費還是要寫）
+  const emoji = it.status === 'ok' || evenly ? ':ok:' : ':shopping_cart:'
+  if (evenly && !it.scissorCount) return `* ${emoji} ${it.name}x${q}${mark}`
   // 未填金額輸出 ?（未知），不是 0
   const sellQty = it.split ? lootSplit(it, n).sell : q
   let price = `${it.unitPrice ?? '?'}x${sellQty}`

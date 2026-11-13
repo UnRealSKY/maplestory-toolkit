@@ -12,6 +12,7 @@ const HEADER_RE = /^##\s+(\S+)\s+(.+?)(?:\s*\/\s*(\d+))?\s*(?:[｜|・].*)?$/
 const STRUCK_RE = /^\*\s*~~(.+?)~~\s*$/
 // 狀態 token 寬鬆捕捉，相容 :ok: 短碼與 🆗 unicode（DC 兩種編輯模式）
 const LOOT_RE = /^\*\s*(\S+)\s+(.+?)x(\d+)\s*:\s*(.+?)\s*$/
+const SPLIT_ONLY_RE = /^\*\s*(\S+)\s+(.+?)x(\d+)\s*$/
 // 金額可為 ?（未填、未知），對應 unitPrice null / scissorUnitPrice undefined
 const PRICE_RE = /^(\d+|\?)x(\d+)(?:\s*-\s*(\d+|\?)\(剪刀\)x(\d+))?/
 // 尾綴 (均攤) 表示買家只付 1/N（相容全形括號）；無尾綴為全額
@@ -63,10 +64,14 @@ function stripLeadingStatus(s: string): string {
 }
 
 function parseLoot(raw: string): LootItem | null {
-  const split = SPLIT_MARK_RE.test(raw)
-  const item = parseLootLine(raw.replace(SPLIT_MARK_RE, ''))
-  if (item && split) item.split = true
-  return item
+  if (!SPLIT_MARK_RE.test(raw)) return parseLootLine(raw)
+  const line = raw.replace(SPLIT_MARK_RE, '')
+  const item = parseLootLine(line)
+  if (item) return { ...item, split: true }
+  // 剛好均分完的項目沒有金額：* :ok: 品名xN（每人xM）
+  const only = line.match(SPLIT_ONLY_RE)
+  if (!only) return null
+  return { status: lootStatusFrom(only[1]), name: only[2].trim(), qty: Number(only[3]), unitPrice: null, split: true }
 }
 
 function parseLootLine(line: string): LootItem | null {

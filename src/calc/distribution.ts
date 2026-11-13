@@ -9,9 +9,14 @@ export function lootSplit(item: LootItem, n: number): { each: number; split: num
   return { each, split: each * n, sell: qty - each * n }
 }
 
-// 還要拿去賣的項目：待售，而且扣掉均分之後還有剩
+// 勾了均分而且剛好分完，沒有東西要賣
+export function splitsEvenly(item: LootItem, n: number): boolean {
+  return !!item.split && n > 0 && lootSplit(item, n).sell === 0
+}
+
+// 還要拿去賣的項目：待售，而且不是剛好均分完
 export function awaitingSale(item: LootItem, n: number): boolean {
-  return item.status === 'cart' && lootSplit(item, n).sell > 0
+  return item.status === 'cart' && !splitsEvenly(item, n)
 }
 
 // n＝團員人數，勾了均分的項目只算賣掉的那幾個

@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useRecordsStore } from '../store/records'
 import { useHistory } from '../store/history'
-import { aliasOfIn, groupOf, channelOf, webhookFor, useGroups, leaderFeeEnabled } from '../store/groups'
+import { aliasOfIn, groupOf, channelOf, webhookFor, useGroups, leaderFeeEnabled, regularsIn } from '../store/groups'
 import { publishOrSync, publishContent, hasImageChanges, dcSyncStatus, ATTACHMENT_LIMIT } from '../dc/publish'
 import { parseMessageLink, isBindingLost, getMessage } from '../dc/webhook'
 import type { LootRecord, LootItem, Member, Purchase, Stream, Consignment, DcImage, DcImageKind } from '../types'
@@ -67,6 +67,12 @@ const serviceFeePercent = computed({
 function handleLabel(h: string): string {
   const a = aliasOfIn(groupId.value, h)
   return a ? `${a} (${h})` : h
+}
+
+// 常駐這次紀錄所屬頻道的人，在團員與團長選單裡標出來
+const regulars = computed(() => new Set(regularsIn(record.value?.groupId, record.value?.channelId)))
+function regularTag(h: string): string {
+  return regulars.value.has(h) ? '常駐' : ''
 }
 
 function ensureIds() {
@@ -469,7 +475,7 @@ function toggleDropsSettle(i: number) {
           <span class="field-label">人</span>
           <div class="leader-handle-row">
             <AutocompleteInput :model-value="record.leader?.handle ?? ''"
-              :suggestions="history.handles.value" :label-for="handleLabel"
+              :suggestions="history.handles.value" :label-for="handleLabel" :tag-for="regularTag"
               :loading="history.handlesLoading.value" placeholder="@handle（留空＝沒有團長）"
               @update:model-value="setLeaderHandle($event)" />
             <span v-if="record.leader && aliasOfIn(groupId, record.leader.handle)" class="alias-badge">
@@ -504,8 +510,10 @@ function toggleDropsSettle(i: number) {
         <li v-for="(m, i) in record.members" :key="m.id" class="member-row">
           <!-- 團長那列在這裡唯讀：他是上面「團長」欄位設的，兩處都能改會互相打架 -->
           <div v-if="isLeaderRow(m.handle)" class="member-handle locked">{{ m.handle }}</div>
-          <AutocompleteInput v-else class="member-handle" :model-value="m.handle" :suggestions="history.handles.value"
-            :label-for="handleLabel" :loading="history.handlesLoading.value" placeholder="@handle"
+          <!-- 別列已經填過的人不再出現在選單裡 -->
+          <AutocompleteInput v-else class="member-handle" :model-value="m.handle"
+            :suggestions="history.handles.value.filter((h) => !record!.members.some((o, j) => j !== i && o.handle === h))"
+            :label-for="handleLabel" :tag-for="regularTag" :loading="history.handlesLoading.value" placeholder="@handle"
             @update:model-value="updateMember(i, { handle: $event })" />
           <span v-if="aliasOfIn(groupId, m.handle)" class="alias-badge">{{ aliasOfIn(groupId, m.handle) }}</span>
           <span v-if="isLeaderRow(m.handle)" class="chip chip-cart leader-tag">團長</span>

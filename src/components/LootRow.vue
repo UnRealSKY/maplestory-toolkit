@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LootItem, LootStatus } from '../types'
-import { itemNet, lootSplit } from '../calc/distribution'
+import { itemNet, lootSplit, splitsEvenly } from '../calc/distribution'
 import { useHistory } from '../store/history'
 import AutocompleteInput from './AutocompleteInput.vue'
 
@@ -17,6 +17,10 @@ const STATUS_META: Record<LootStatus, { cls: string; label: string }> = {
   ok: { cls: 'chip-ok', label: '✓ 售出' },
   struck: { cls: 'chip-struck', label: '✖ 不計入' },
 }
+
+// 剛好均分完的沒東西要賣，狀態沒有意義：只顯示「均分」、不能切換。
+// 不想算進去就取消均分或刪掉這列
+const evenly = computed(() => props.modelValue.status !== 'struck' && splitsEvenly(props.modelValue, props.memberCount))
 
 function patch(part: Partial<LootItem>) {
   emit('update:modelValue', { ...props.modelValue, ...part })
@@ -52,7 +56,8 @@ const priceHints = computed(() =>
   <tr>
     <td class="drag-cell"><span class="drag-handle" draggable="true" title="拖拉排序" @dragstart="emit('grab', $event)">⠿</span></td>
     <td>
-      <button type="button" class="chip" :class="STATUS_META[modelValue.status].cls" @click="cycleStatus">
+      <span v-if="evenly" class="chip chip-ok chip-static" title="剛好分完，沒有要賣的">✓ 均分</span>
+      <button v-else type="button" class="chip" :class="STATUS_META[modelValue.status].cls" @click="cycleStatus">
         {{ STATUS_META[modelValue.status].label }}
       </button>
     </td>
@@ -102,6 +107,7 @@ const priceHints = computed(() =>
 
 <style scoped>
 .name-cell { min-width: 150px; }
+.chip-static, .chip-static:hover { cursor: default; filter: none; }
 .cell-num { width: 6em; }
 .cell-num.sm { width: 4.5em; }
 .cell-note { min-width: 110px; }
